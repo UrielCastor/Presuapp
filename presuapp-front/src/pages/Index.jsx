@@ -59,7 +59,7 @@ export default function Index() {
                 <Button variant="ghost" onClick={() => navigate('/dashboard')} style={{ marginRight: '10px' }}>
                   Dashboard
                 </Button>
-                <Button variant="primary" onClick={() => { logout(); navigate('/login'); }}>
+                <Button variant="primary" onClick={() => { logout(); navigate('/'); }}>
                   Cerrar sesión
                 </Button>
               </>
