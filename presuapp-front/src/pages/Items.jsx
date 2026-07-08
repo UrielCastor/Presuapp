@@ -223,9 +223,12 @@ export default function Items() {
                   </td>
                   <td className="notes-cell">{item.description || '—'}</td>
                   <td>
-                    {item.profession ? (
-                      <span className="badge badge-info">{item.profession.name}</span>
-                    ) : '—'}
+                    {(() => {
+                      const prof = professions.find(p => p.id === item.professionId);
+                      return prof ? (
+                        <span className="badge badge-info">{prof.name}</span>
+                      ) : '—';
+                    })()}
                   </td>
                   <td className="price-cell">{formatCurrency(item.price)}</td>
                   <td>
@@ -265,9 +268,12 @@ export default function Items() {
                 <div className="item-icon large">🔧</div>
                 <div>
                   <h3 className="item-card-name">{item.name}</h3>
-                  {item.profession && (
-                    <span className="badge badge-info">{item.profession.name}</span>
-                  )}
+                  {(() => {
+                    const prof = professions.find(p => p.id === item.professionId);
+                    return prof ? (
+                      <span className="badge badge-info" style={{ display: 'inline-block', marginTop: '4px' }}>{prof.name}</span>
+                    ) : null;
+                  })()}
                 </div>
                 <span className="item-price">{formatCurrency(item.price)}</span>
               </div>

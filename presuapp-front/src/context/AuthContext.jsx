@@ -45,13 +45,41 @@ export function AuthProvider({ children }) {
     try {
       const res = await axiosInstance.get('/auth/me');
       const freshUser = res.data.data;
-      localStorage.setItem('user', JSON.stringify(freshUser));
-      setUser(freshUser);
-      return freshUser;
+      
+      // Preserve role and status locally, as they are not returned in the /me endpoint
+      let currentRole = 'USER';
+      let currentStatus = 'ACTIVE';
+
+      if (user && user.role) {
+        currentRole = user.role;
+      } else {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed && parsed.role) currentRole = parsed.role;
+            if (parsed && parsed.status) currentStatus = parsed.status;
+          } catch {}
+        }
+      }
+
+      if (user && user.status) {
+        currentStatus = user.status;
+      }
+
+      const mergedUser = {
+        ...freshUser,
+        role: currentRole,
+        status: currentStatus,
+      };
+
+      localStorage.setItem('user', JSON.stringify(mergedUser));
+      setUser(mergedUser);
+      return mergedUser;
     } catch (e) {
       console.error('Error refreshing profile:', e);
     }
-  }, [token]);
+  }, [token, user]);
 
   const value = {
     user,

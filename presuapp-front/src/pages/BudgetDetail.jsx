@@ -179,8 +179,34 @@ export default function BudgetDetail() {
       alert('Presupuesto actualizado correctamente.');
       setIsEditModalOpen(false);
       fetchBudget(); // Reload fresh state
-    } catch {
-      alert('Error al actualizar el presupuesto.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error al actualizar el presupuesto.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleTransitionStatus = async (newStatus) => {
+    let confirmText = '';
+    if (newStatus === 'IN_PROGRESS') {
+      confirmText = '¿Estás seguro de que querés iniciar el trabajo para este presupuesto?';
+    } else if (newStatus === 'FINISHED') {
+      confirmText = '¿Estás seguro de que querés marcar este trabajo como Finalizado? Esta acción es definitiva.';
+    } else if (newStatus === 'CANCELLED') {
+      confirmText = '¿Estás seguro de que querés la cancelación? El presupuesto quedará bloqueado permanentemente.';
+    }
+
+    if (!window.confirm(confirmText)) return;
+
+    setIsUpdating(true);
+    try {
+      await axiosInstance.put(`/budgets/${id}`, {
+        status: newStatus
+      });
+      alert('¡El estado del presupuesto se actualizó con éxito!');
+      fetchBudget(); // Reload fresh state
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error al actualizar el estado del presupuesto.');
     } finally {
       setIsUpdating(false);
     }
@@ -225,7 +251,6 @@ export default function BudgetDetail() {
     return map[status] || status;
   };
 
-  // Service item representation icons mapping
   const getServiceIcon = (name) => {
     const text = (name || '').toLowerCase();
     if (text.includes('elect') || text.includes('cabl') || text.includes('toma')) return '🔌';
@@ -235,14 +260,14 @@ export default function BudgetDetail() {
     if (text.includes('alba') || text.includes('pared') || text.includes('cem') || text.includes('ladr')) return '🧱';
     if (text.includes('pint') || text.includes('color') || text.includes('endui')) return '🎨';
     if (text.includes('carp') || text.includes('mad') || text.includes('mueb')) return '🪚';
-    return '🔧'; // default fallback icon
+    return '🔧';
   };
 
   if (loadingData) return <Loading message="Cargando presupuesto..." />;
   if (error) {
     return (
       <div className="page-container">
-        <div className="alert alert-error">
+        <div className="alert alert-error" style={{ marginBottom: '20px' }}>
           <span className="alert-icon">⚠️</span> {error}
         </div>
         <Button variant="ghost" onClick={() => navigate('/budgets')}>
@@ -273,43 +298,116 @@ export default function BudgetDetail() {
   ];
 
   const currentStep = timelineSteps.find(s => s.key === budget.status) || { order: 0 };
+  const isCancelled = budget.status === 'CANCELLED';
+  const progressPercent = `${(currentStep.order / (timelineSteps.length - 1)) * 100}%`;
 
   return (
-    <div className="page-container" style={{ position: 'relative' }}>
+    <div className="page-container" style={{ position: 'relative', paddingBottom: '100px' }}>
       
       {/* Dynamic inline Custom Badges and custom elements styles */}
       <style>{`
+        /* State Badges Style Upgrade */
         .badge-pending { color: #f59e0b; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.25); }
         .badge-sent { color: #0284c7; background: rgba(2, 132, 199, 0.12); border: 1px solid rgba(2, 132, 199, 0.25); }
         .badge-approved { color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); }
         .badge-inprogress { color: #8b5cf6; background: rgba(139, 92, 246, 0.12); border: 1px solid rgba(139, 92, 246, 0.25); }
         .badge-finished { color: #047857; background: rgba(4, 120, 87, 0.12); border: 1px solid rgba(4, 120, 87, 0.25); }
-        .badge-cancelled { color: #ef4444; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25); }
+        .badge-cancelled { color: #ef4444; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25); font-weight: 700; }
 
+        /* Unified Card Styles */
+        .detail-page-card {
+          padding: 24px;
+          border-radius: 16px;
+          border: 1px solid var(--border-color);
+          background: var(--bg-card);
+          box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.15);
+          margin-bottom: 32px;
+          overflow: hidden;
+        }
+
+        /* Improved Grid Distribution & Spacings */
+        .detail-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+          gap: 32px;
+          margin-bottom: 32px;
+        }
+        
+        .detail-row-field {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 0;
+          border-bottom: 1px solid var(--border-color);
+        }
+        .detail-row-field:last-child {
+          border-bottom: none;
+        }
+
+        /* Back Button Style Restoration and Polish */
+        .back-btn {
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-weight: 600;
+          font-size: 0.9rem;
+          margin-bottom: 24px;
+          transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .back-btn:hover {
+          color: var(--text-primary);
+          transform: translateX(-2px);
+        }
+
+        /* Perfect Alignments and Modern Header styling */
+        .modern-header-section {
+          padding: 28px;
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: 16px;
+          box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.1);
+          margin-bottom: 32px;
+        }
+
+        /* Timeline layout */
+        .timeline-container-card {
+          padding: 28px 24px 24px;
+          margin-bottom: 32px;
+          background: var(--bg-card);
+          border-radius: 16px;
+          border: 1px solid var(--border-color);
+          box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.1);
+        }
         .timeline-wrapper {
           display: flex;
           justify-content: space-between;
           position: relative;
-          margin: 30px 0;
-          padding: 0 10px;
+          margin: 32px auto 16px;
+          padding: 0 40px;
+          max-width: 100%;
         }
         .timeline-line {
           position: absolute;
-          top: 15px;
-          left: 5%;
-          right: 5%;
-          height: 3px;
+          top: 16px;
+          left: 40px;
+          right: 40px;
+          height: 4px;
           background: var(--border-color);
           z-index: 1;
+          border-radius: 2px;
         }
         .timeline-line-active {
           position: absolute;
-          top: 15px;
-          left: 5%;
-          height: 3px;
-          background: linear-gradient(90deg, var(--brand-primary), var(--brand-accent));
+          top: 16px;
+          left: 40px;
+          height: 4px;
           z-index: 2;
-          transition: width 0.4s ease;
+          border-radius: 2px;
+          transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .timeline-node {
           position: relative;
@@ -317,11 +415,11 @@ export default function BudgetDetail() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          width: 60px;
+          width: 80px;
         }
         .node-bullet {
-          width: 32px;
-          height: 32px;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
           background: var(--bg-surface);
           border: 3px solid var(--border-color);
@@ -329,38 +427,64 @@ export default function BudgetDetail() {
           align-items: center;
           justify-content: center;
           color: var(--text-muted);
-          font-weight: bold;
-          font-size: 0.9rem;
-          transition: all 0.3s ease;
+          font-weight: 700;
+          font-size: 0.92rem;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        .node-label {
+          margin-top: 12px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: var(--text-muted);
+          text-align: center;
+          white-space: nowrap;
+          transition: color 0.3s ease;
+        }
+
+        /* Timeline States implementation */
+        .timeline-node.passed .node-bullet {
+          border-color: #10b981;
+          background: #10b981;
+          color: #fff;
+        }
+        .timeline-node.passed .node-label {
+          color: #10b981;
+        }
+
         .timeline-node.active .node-bullet {
           border-color: var(--brand-primary);
           background: var(--brand-primary);
           color: #fff;
-          box-shadow: var(--shadow-glow);
-        }
-        .timeline-node.passed .node-bullet {
-          border-color: var(--brand-accent);
-          background: var(--brand-accent);
-          color: #fff;
-        }
-        .node-label {
-          margin-top: 8px;
-          font-size: 0.78rem;
-          font-weight: 600;
-          color: var(--text-secondary);
-          text-align: center;
-          white-space: nowrap;
+          box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.25), 0 0 16px rgba(99, 102, 241, 0.4);
         }
         .timeline-node.active .node-label {
           color: var(--text-primary);
+          font-weight: 700;
         }
 
+        .timeline-node.passed.active .node-bullet {
+          border-color: var(--brand-primary);
+          background: #10b981;
+          color: #fff;
+          box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.25), 0 0 16px rgba(99, 102, 241, 0.4);
+        }
+
+        .timeline-node.cancelled .node-bullet {
+          border-color: #ef4444;
+          background: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+        }
+        .timeline-node.cancelled .node-label {
+          color: #ef4444;
+          font-weight: 600;
+        }
+
+        /* Action Grid buttons spacing */
         .action-grid-buttons {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-          gap: 10px;
-          margin-bottom: 24px;
+          gap: 12px;
+          margin-bottom: 32px;
         }
 
         .prof-avatar-placeholder {
@@ -369,27 +493,63 @@ export default function BudgetDetail() {
           border-radius: 50%;
           justify-content: center;
           align-items: center;
-          width: 58px;
-          height: 58px;
-          font-size: 1.5rem;
+          width: 54px;
+          height: 54px;
+          font-size: 1.4rem;
           font-weight: 800;
           display: flex;
-          box-shadow: 0 0 16px rgba(99, 102, 241, 0.4);
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
         }
 
-        .detail-row-flex {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 12px;
-        }
-
-        .modern-header-section {
-          padding: 24px;
-          background: var(--bg-card);
-          border: 1px solid var(--border-color);
-          border-radius: var(--radius-lg);
+        /* Uniform card title designs */
+        .detail-card-title {
+          font-size: 1.15rem;
+          font-weight: 800;
+          color: var(--text-primary);
           margin-bottom: 24px;
+          border-bottom: 2px solid var(--border-color);
+          padding-bottom: 12px;
+        }
+
+        /* Budget detailed services table margins */
+        .data-table th, .data-table td {
+          padding: 14px 16px;
+        }
+
+        /* Responsive adaptations */
+        @media (max-width: 650px) {
+          .timeline-wrapper {
+            flex-direction: column;
+            gap: 28px;
+            align-items: flex-start;
+            padding: 10px 20px;
+            margin: 20px 0 10px;
+          }
+          .timeline-line {
+            top: 20px;
+            bottom: 20px;
+            left: 37px;
+            width: 4px;
+            height: auto;
+            right: auto;
+          }
+          .timeline-line-active {
+            top: 20px;
+            left: 37px;
+            width: 4px !important;
+            transition: height 0.4s ease;
+          }
+          .timeline-node {
+            flex-direction: row;
+            width: 100%;
+            gap: 20px;
+            align-items: center;
+            text-align: left;
+          }
+          .node-label {
+            margin-top: 0;
+            font-size: 0.85rem;
+          }
         }
       `}</style>
 
@@ -402,13 +562,13 @@ export default function BudgetDetail() {
       <div className="modern-header-section">
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '20px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
               <span style={{ fontSize: '1.8rem', filter: 'drop-shadow(0 0 4px rgba(245, 158, 11, 0.5))' }}>⚡</span>
               <h1 className="page-title" style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800 }}>
                 Presupuesto <span className="brand-text">#{budget.id}</span>
               </h1>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
               <span className={`badge ${getBadgeClass(budget.status)}`}>
                 {getStatusLabel(budget.status)}
               </span>
@@ -418,18 +578,18 @@ export default function BudgetDetail() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div className="prof-avatar-placeholder" style={{ width: '48px', height: '48px', fontSize: '1.2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div className="prof-avatar-placeholder" style={{ width: '48px', height: '48px', fontSize: '1.15rem' }}>
               {budget.user?.name?.charAt(0).toUpperCase() || 'P'}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.98rem' }}>{budget.user?.name || 'Profesional'}</span>
+              <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-primary)' }}>{budget.user?.name || 'Profesional'}</span>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                 {budget.user?.professions?.[0]?.name || 'Servicios Especiales'}
               </span>
               {budget.user?.locality && (
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  📍 {budget.user.locality}, {budget.user.city || ''}
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  📍 {budget.user.locality}{budget.user.city ? `, ${budget.user.city}` : ''}
                 </span>
               )}
             </div>
@@ -438,33 +598,77 @@ export default function BudgetDetail() {
       </div>
 
       {/* 4. VISUAL TIMELINE PROGRESS */}
-      <Card style={{ padding: '20px 10px', marginBottom: '24px' }}>
-        <h3 className="section-title" style={{ margin: '0 0 10px 15px', fontSize: '0.92rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
-          Línea de Progreso Visual
-        </h3>
-        <div className="timeline-wrapper">
+      <div 
+        className="timeline-container-card"
+        style={{ '--progress': progressPercent }}
+      >
+        <span 
+          style={{ 
+            fontSize: '0.78rem', 
+            fontWeight: 800, 
+            textTransform: 'uppercase', 
+            letterSpacing: '0.08em', 
+            color: isCancelled ? '#ef4444' : 'var(--text-muted)', 
+            marginLeft: '8px'
+          }}
+        >
+          {isCancelled ? '❌ Flujo de Trabajo Interrumpido (Cancelado)' : '⚙️ Línea de Progreso del Presupuesto'}
+        </span>
+        
+        <div className={`timeline-wrapper ${isCancelled ? 'timeline-cancelled' : ''}`}>
           <div className="timeline-line"></div>
           <div 
             className="timeline-line-active" 
-            style={{ width: `${(currentStep.order / (timelineSteps.length - 1)) * 90}%` }}
+            style={{ 
+              background: isCancelled ? 'none' : '#10b981',
+              borderTop: isCancelled ? '3px dashed #ef4444' : 'none',
+              borderLeft: isCancelled ? '3px dashed #ef4444' : 'none',
+              width: isCancelled ? '100%' : 'var(--progress)'
+            }}
           ></div>
+          
           {timelineSteps.map((step) => {
-            const isPassed = step.order < currentStep.order;
-            const isActive = step.order === currentStep.order;
+            const isStepActive = step.order === currentStep.order;
+            const isStepPassed = !isCancelled && step.order < currentStep.order;
+            const isStepPending = !isCancelled && step.order > currentStep.order;
+            const isStepCancelled = isCancelled && step.order <= currentStep.order;
+
+            // Compute CSS selector class modifier
+            let nodeClass = '';
+            if (isCancelled) {
+              nodeClass = isStepCancelled ? 'cancelled' : 'pending';
+            } else {
+              if (isStepPassed) nodeClass = 'passed';
+              if (isStepActive) nodeClass = 'active';
+              if (isStepPending) nodeClass = 'pending';
+            }
+
+            // Bullet content display based on conditions
+            let bulletContent = step.order + 1;
+            if (isCancelled) {
+              if (isStepCancelled) {
+                bulletContent = '✗';
+              }
+            } else {
+              if (isStepPassed || (isStepActive && step.order > 0)) {
+                bulletContent = '✔';
+              }
+            }
+
             return (
               <div 
                 key={step.key} 
-                className={`timeline-node ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''}`}
+                className={`timeline-node ${nodeClass}`}
               >
                 <div className="node-bullet">
-                  {isPassed ? '✓' : step.order + 1}
+                  {bulletContent}
                 </div>
                 <div className="node-label">{step.label}</div>
               </div>
             );
           })}
         </div>
-      </Card>
+      </div>
 
       {/* 2. BOTONES DE ACCIÓN */}
       <div className="action-grid-buttons">
@@ -483,9 +687,31 @@ export default function BudgetDetail() {
         <Button variant="outline" onClick={handleShareEmail} fullWidth style={{ color: '#a78bfa', borderColor: 'rgba(167, 139, 250, 0.4)' }}>
           ✉️ Enviar Email
         </Button>
-        <Button variant="outline" onClick={() => setIsEditModalOpen(true)} fullWidth style={{ color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.4)' }}>
-          ✏️ Editar
-        </Button>
+        {(budget.status === 'PENDING' || budget.status === 'SENT') && (
+          <Button variant="outline" onClick={() => setIsEditModalOpen(true)} fullWidth style={{ color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.4)' }}>
+            ✏️ Editar
+          </Button>
+        )}
+        {budget.status === 'APPROVED' && (
+          <>
+            <Button variant="primary" onClick={() => handleTransitionStatus('IN_PROGRESS')} fullWidth>
+              ⚙️ Iniciar Trabajo
+            </Button>
+            <Button variant="danger" onClick={() => handleTransitionStatus('CANCELLED')} fullWidth style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.4)' }}>
+              ❌ Cancelar Trabajo
+            </Button>
+          </>
+        )}
+        {budget.status === 'IN_PROGRESS' && (
+          <>
+            <Button variant="success" onClick={() => handleTransitionStatus('FINISHED')} fullWidth>
+              ✅ Finalizar Trabajo
+            </Button>
+            <Button variant="danger" onClick={() => handleTransitionStatus('CANCELLED')} fullWidth style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.4)' }}>
+              ❌ Cancelar Trabajo
+            </Button>
+          </>
+        )}
         <Button variant="outline" onClick={handleDuplicate} loading={duplicating} fullWidth style={{ color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.4)' }}>
           📋 Duplicar
         </Button>
@@ -494,20 +720,20 @@ export default function BudgetDetail() {
         </Button>
       </div>
 
-      <div className="detail-grid" style={{ marginBottom: '24px' }}>
+      <div className="detail-grid">
         
         {/* 3. TARJETA INFORMACIÓN DEL PROFESIONAL */}
-        <Card className="detail-card">
+        <div className="detail-page-card">
           <h2 className="detail-card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             💼 Emisor Profesional
           </h2>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '24px' }}>
             <div className="prof-avatar-placeholder">
               {budget.user?.name?.charAt(0).toUpperCase() || 'P'}
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>{budget.user?.name}</h3>
-              <span className="badge badge-info" style={{ marginTop: '4px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{budget.user?.name}</h3>
+              <span className="badge badge-info" style={{ marginTop: '6px', display: 'inline-block' }}>
                 {budget.user?.professions?.[0]?.name || 'Servicios Independientes'}
               </span>
             </div>
@@ -517,7 +743,7 @@ export default function BudgetDetail() {
             {budget.user?.phone && (
               <div className="detail-row-field">
                 <span className="field-label">WhatsApp</span>
-                <span className="field-value">{budget.user.phone}</span>
+                <span className="field-value" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{budget.user.phone}</span>
               </div>
             )}
             <div className="detail-row-field">
@@ -539,19 +765,19 @@ export default function BudgetDetail() {
               </span>
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* CLIENT INFO CARD */}
-        <Card className="detail-card">
+        <div className="detail-page-card">
           <h2 className="detail-card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             👤 Cliente Destinatario
           </h2>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '24px' }}>
             <div className="client-avatar" style={{ margin: 0 }}>
               {budget.client?.name?.charAt(0).toUpperCase() || 'C'}
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>{budget.client?.name || '—'}</h3>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{budget.client?.name || '—'}</h3>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Destinatario del servicio</span>
             </div>
           </div>
@@ -560,7 +786,7 @@ export default function BudgetDetail() {
             {budget.client?.phone && (
               <div className="detail-row-field">
                 <span className="field-label">Teléfono</span>
-                <a href={`tel:${budget.client.phone}`} className="field-value link">
+                <a href={`tel:${budget.client.phone}`} className="field-value link" style={{ fontWeight: 600 }}>
                   {budget.client.phone}
                 </a>
               </div>
@@ -584,11 +810,11 @@ export default function BudgetDetail() {
               </div>
             )}
           </div>
-        </Card>
+        </div>
       </div>
 
       {/* 5. SERVICIOS TABLE */}
-      <Card className="detail-card items-card">
+      <div className="detail-page-card">
         <h2 className="detail-card-title">🔧 Trabajos y Conceptos Incluidos</h2>
 
         {/* Desktop view */}
@@ -596,10 +822,10 @@ export default function BudgetDetail() {
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: '40%' }}>Servicio / Concepto</th>
-                <th style={{ width: '15%' }} className="text-right">Precio Unit.</th>
+                <th style={{ width: '45%' }}>Servicio / Concepto</th>
+                <th style={{ width: '18%' }} className="text-right">Precio Unit.</th>
                 <th style={{ width: '15%' }} className="text-center">Cantidad</th>
-                <th style={{ width: '15%' }} className="text-right">Subtotal</th>
+                <th style={{ width: '22%' }} className="text-right">Subtotal</th>
               </tr>
             </thead>
             <tbody>
@@ -610,12 +836,12 @@ export default function BudgetDetail() {
                 return (
                   <tr key={idx}>
                     <td>
-                      <span style={{ marginRight: '8px' }}>{getServiceIcon(bi.description)}</span>
+                      <span style={{ marginRight: '10px', fontSize: '1.1rem' }}>{getServiceIcon(bi.description)}</span>
                       <strong style={{ color: 'var(--text-primary)' }}>{bi.description || '—'}</strong>
                     </td>
-                    <td className="text-right">{formatCurrency(price)}</td>
-                    <td className="text-center">{qty}</td>
-                    <td className="text-right price-cell">
+                    <td className="text-right" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(price)}</td>
+                    <td className="text-center" style={{ fontWeight: 600 }}>{qty}</td>
+                    <td className="text-right price-cell" style={{ fontWeight: 700 }}>
                       {formatCurrency(subtotal)}
                     </td>
                   </tr>
@@ -632,14 +858,14 @@ export default function BudgetDetail() {
             const qty = bi.quantity || 1;
             const subtotal = bi.subtotal || (price * qty);
             return (
-              <div key={idx} className="mobile-item-row" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '12px' }}>
+              <div key={idx} className="mobile-item-row" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', marginBottom: '14px' }}>
                 <div className="mobile-item-name" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 650, color: 'var(--text-primary)' }}>
-                  <span>{getServiceIcon(bi.description)}</span>
+                  <span style={{ fontSize: '1.15rem' }}>{getServiceIcon(bi.description)}</span>
                   {bi.description || '—'}
                 </div>
-                <div className="mobile-item-detail" style={{ marginLeft: '26px', marginTop: '6px' }}>
-                  <span>{formatCurrency(price)} × {qty}</span>
-                  <span className="mobile-item-subtotal" style={{ fontWeight: 700 }}>
+                <div className="mobile-item-detail" style={{ marginLeft: '28px', marginTop: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{formatCurrency(price)} × {qty}</span>
+                  <span className="mobile-item-subtotal" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                     {formatCurrency(subtotal)}
                   </span>
                 </div>
@@ -647,25 +873,24 @@ export default function BudgetDetail() {
             );
           })}
         </div>
-      </Card>
+      </div>
 
       {/* 6. RESUMEN ECONÓMICO CARD (FULL WIDTH HORIZONTAL KPI GRID) */}
-      <Card style={{ 
+      <div className="detail-page-card" style={{ 
         width: '100%', 
         background: 'var(--bg-surface)', 
         border: '1px solid var(--border-color)', 
-        borderRadius: 'var(--radius-lg)',
+        borderRadius: '16px',
         boxShadow: 'var(--shadow-md)',
         position: 'relative',
-        padding: '24px',
-        marginBottom: '32px',
-        overflow: 'hidden'
+        padding: '28px',
+        marginBottom: '32px'
       }}>
         {/* Decorative Top Accent Stripe */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(95deg, var(--brand-primary), var(--brand-accent))' }}></div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-          <span style={{ fontSize: '1.2rem' }}>💳</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+          <span style={{ fontSize: '1.25rem' }}>💳</span>
           <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
             Resumen Financiero del Presupuesto
           </h3>
@@ -674,7 +899,7 @@ export default function BudgetDetail() {
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
-          gap: '20px',
+          gap: '24px',
           alignItems: 'center'
         }}>
           {/* Subtotal Column */}
@@ -717,7 +942,7 @@ export default function BudgetDetail() {
             gap: '4px',
             alignItems: 'flex-start',
             borderLeft: '2px solid var(--border-color)',
-            paddingLeft: '24px',
+            paddingLeft: '28px',
             height: '100%',
             justifyContent: 'center'
           }} className="total-net-col">
@@ -735,7 +960,7 @@ export default function BudgetDetail() {
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Pesos Argentinos (ARS)</span>
           </div>
         </div>
-      </Card>
+      </div>
       
       {/* Support simple mobile layout style overrides */}
       <style>{`
@@ -743,29 +968,29 @@ export default function BudgetDetail() {
           .total-net-col {
             border-left: none !important;
             padding-left: 0 !important;
-            padding-top: 15px !important;
+            padding-top: 18px !important;
             border-top: 2px dashed var(--border-color) !important;
           }
         }
       `}</style>
 
       {/* 9. TARJETA DIGITAL QR */}
-      <Card style={{ border: '1px dashed var(--border-color)', background: 'var(--bg-surface)', padding: '24px 20px', marginBottom: '40px', display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+      <div className="detail-page-card" style={{ border: '1px dashed var(--border-color)', background: 'var(--bg-surface)', padding: '24px 20px', display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
         <img 
           src={qrCodeUrl} 
           alt="Presupuesto QR" 
           style={{ width: '130px', height: '130px', borderRadius: '12px', border: '6px solid white', boxShadow: 'var(--shadow-md)' }}
         />
         <div style={{ flex: 1, minWidth: '220px', textAlign: 'left' }}>
-          <h4 style={{ margin: '0 0 6px', fontSize: '1.05rem', fontWeight: 700 }}>Código de Lectura Rápida (QR)</h4>
-          <p style={{ margin: '0 0 12px', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Código de Lectura Rápida (QR)</h4>
+          <p style={{ margin: '0 0 14px', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             Escaneá este código QR con la cámara de tu celular para ver el presupuesto en línea en su formato web interactivo público.
           </p>
           <Button variant="ghost" size="sm" onClick={handleCopyLink}>
             🔗 Copiar enlace público
           </Button>
         </div>
-      </Card>
+      </div>
 
       {/* EDIT BUDGET MODAL */}
       {isEditModalOpen && (

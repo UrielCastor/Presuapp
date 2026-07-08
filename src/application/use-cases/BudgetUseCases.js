@@ -64,7 +64,50 @@ class BudgetUseCases {
   }
 
   async updateBudget(id, data, userId) {
-    await this.getBudget(id, userId);
+    const budget = await this.getBudget(id, userId);
+    const currentStatus = budget.status || 'PENDING';
+
+    // 1. Si el estado es Finalizado o Cancelado, está totalmente bloqueado
+    if (currentStatus === 'FINISHED' || currentStatus === 'CANCELLED') {
+      throw new Error('El presupuesto ya no admite modificaciones debido a su estado.');
+    }
+
+    // 2. Si el estado es Aceptado o En proceso, el contenido está bloqueado
+    if (currentStatus === 'APPROVED' || currentStatus === 'IN_PROGRESS') {
+      // Validar presencia de cambio de estado
+      if (!data.status) {
+        throw new Error('El contenido de este presupuesto está bloqueado. Únicamente se permite actualizar el estado del trabajo.');
+      }
+
+      const allowedTransitions = {
+        APPROVED: ['IN_PROGRESS', 'CANCELLED'],
+        IN_PROGRESS: ['FINISHED', 'CANCELLED']
+      };
+
+      const nextStatus = data.status;
+      if (!allowedTransitions[currentStatus].includes(nextStatus)) {
+        throw new Error(`Transición de estado no permitida: de ${currentStatus} a ${nextStatus}.`);
+      }
+
+      // Validar que no se intente modificar propiedades de contenido
+      if (data.discount !== undefined && parseFloat(data.discount) !== parseFloat(budget.discount)) {
+        throw new Error('El descuento no se puede modificar una vez aceptado el presupuesto.');
+      }
+      if (data.notes !== undefined && data.notes !== budget.notes) {
+        throw new Error('Las observaciones no se pueden modificar una vez aceptado el presupuesto.');
+      }
+      if (data.clientId !== undefined && parseInt(data.clientId) !== parseInt(budget.clientId)) {
+        throw new Error('El cliente no se puede modificar una vez aceptado el presupuesto.');
+      }
+      if (data.items !== undefined) {
+        throw new Error('Los servicios y conceptos no se pueden modificar una vez aceptado el presupuesto.');
+      }
+
+      // Si todo es correcto, solo actualizamos el estado
+      return this.budgetRepository.update(id, { status: nextStatus });
+    }
+
+    // Para Creado y Enviado, se permite la edición completa
     return this.budgetRepository.update(id, data);
   }
 
