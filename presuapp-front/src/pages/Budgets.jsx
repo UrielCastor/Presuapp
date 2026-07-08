@@ -116,6 +116,11 @@ export default function Budgets() {
       setFormError('Agregá al menos un servicio.');
       return;
     }
+    const discountVal = parseFloat(discount) || 0;
+    if (discountVal < 0 || discountVal > 100) {
+      setFormError('El descuento debe estar entre 0% y 100%.');
+      return;
+    }
     const currentItemsCount = budgets.reduce((acc, b) => acc + (b.items?.length || 0), 0);
     if (user?.userType === 'FREE' && currentItemsCount + selectedItems.length > 100) {
       setFormError('Has alcanzado el límite de tu plan FREE (Máximo 100 ítems permitidos). Actualizá a VIP para seguir creando elementos.');
@@ -139,12 +144,26 @@ export default function Budgets() {
   };
 
   const getBadgeClass = (status) => {
-    const map = { PENDING: 'badge-warning', APPROVED: 'badge-success', REJECTED: 'badge-danger' };
+    const map = {
+      PENDING: 'badge-pending',
+      SENT: 'badge-sent',
+      APPROVED: 'badge-approved',
+      IN_PROGRESS: 'badge-inprogress',
+      FINISHED: 'badge-finished',
+      CANCELLED: 'badge-cancelled'
+    };
     return map[status] || 'badge-default';
   };
 
   const getStatusLabel = (status) => {
-    const map = { PENDING: 'Pendiente', APPROVED: 'Aprobado', REJECTED: 'Rechazado' };
+    const map = {
+      PENDING: 'Pendiente',
+      SENT: 'Enviado',
+      APPROVED: 'Aceptado',
+      IN_PROGRESS: 'En proceso',
+      FINISHED: 'Finalizado',
+      CANCELLED: 'Cancelado'
+    };
     return map[status] || status;
   };
 

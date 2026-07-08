@@ -26,7 +26,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div
         className={`modal modal-${size}`}
         onClick={(e) => e.stopPropagation()}

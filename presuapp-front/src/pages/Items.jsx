@@ -72,7 +72,7 @@ export default function Items() {
     const initialProfessionId = 
       (selectedProfessionId && selectedProfessionId !== 'unassigned') 
         ? selectedProfessionId.toString() 
-        : '';
+        : (professions.length === 1 ? professions[0].id.toString() : '');
 
     setForm({
       name: '',
@@ -141,7 +141,26 @@ export default function Items() {
       setFormError('El precio debe ser un número válido.');
       return;
     }
+    if (parseFloat(form.price) < 0) {
+      setFormError('El precio no puede ser negativo.');
+      return;
+    }
     
+    if (professions.length === 0) {
+      setFormError('Primero debés crear al menos una profesión en el apartado Profesiones.');
+      return;
+    }
+
+    let finalProfessionId = form.professionId ? parseInt(form.professionId) : null;
+    if (!finalProfessionId && professions.length === 1) {
+      finalProfessionId = professions[0].id;
+    }
+
+    if (!finalProfessionId) {
+      setFormError('Seleccioná una profesión obligatoriamente para clasificar este servicio.');
+      return;
+    }
+
     if (!editingItem && user?.userType === 'FREE' && items.length >= 20) {
       setFormError('Has alcanzado el límite de tu plan FREE (Máximo 20 servicios). Actualizá a VIP para seguir creando elementos.');
       return;
@@ -153,7 +172,7 @@ export default function Items() {
         name: form.name.trim(),
         description: form.description.trim(),
         price: parseFloat(form.price),
-        professionId: form.professionId ? parseInt(form.professionId) : null,
+        professionId: finalProfessionId,
       };
 
       if (editingItem) {
@@ -498,20 +517,28 @@ export default function Items() {
               />
             </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">Profesión / Rubro</label>
-            <select
-              name="professionId"
-              className="form-input form-select"
-              value={form.professionId}
-              onChange={handleChange}
-            >
-              <option value="">Sin profesión específica</option>
-              {professions.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
+          {professions.length > 1 && (
+            <div className="form-group">
+              <label className="form-label">Profesión / Rubro *</label>
+              <select
+                name="professionId"
+                className="form-input form-select"
+                value={form.professionId}
+                onChange={handleChange}
+              >
+                <option value="">Seleccioná una profesión...</option>
+                {professions.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          {professions.length === 0 && (
+            <div className="alert alert-warning" style={{ margin: '12px 0' }}>
+              ⚠️ No tenés profesiones creadas. Creá al menos una primero.
+            </div>
+          )}
 
           {formError && (
             <div className="alert alert-error">

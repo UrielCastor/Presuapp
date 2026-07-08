@@ -36,6 +36,12 @@ export default function Register() {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.trim())) {
+      setError('El correo electrónico ingresado no es válido.');
+      return;
+    }
+
     if (form.password.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres.');
       return;

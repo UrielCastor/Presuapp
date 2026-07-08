@@ -113,6 +113,18 @@ export default function Clients() {
       setFormError('El nombre es obligatorio.');
       return;
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (form.email.trim() && !emailRegex.test(form.email.trim())) {
+      setFormError('El correo electrónico ingresado no es válido.');
+      return;
+    }
+
+    const phoneRegex = /^[0-9+\s\-()]+$/;
+    if (form.phone.trim() && !phoneRegex.test(form.phone.trim())) {
+      setFormError('El teléfono ingresado contiene caracteres inválidos. Solo se permiten números, espacios, +, paréntesis y guiones.');
+      return;
+    }
     
     // Validar límite para plan FREE en creación nueva
     if (!editingClient && user?.userType === 'FREE' && clients.length >= 50) {
