@@ -1,0 +1,430 @@
+openapi: 3.0.0
+
+info:
+  title: Presuapp API
+  description: Backend profesional para la generación de presupuestos para trabajadores independientes.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/api
+    description: Development Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http q
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new professional
+
+      security: []
+
+      requestBody:
+        required: true
+
+        content:
+          application/json:
+            schema:
+              type: object
+
+              required:
+                - name
+                - email
+                - password
+
+              properties:
+                name:
+                  type: string
+
+                  example: Uriel
+
+                email:
+                  type: string
+
+                  example: uriel@test.com
+
+                password:
+                  type: string
+
+                  example: 123456
+
+      responses:
+        '201':
+          description: User registered
+
+  /auth/login:
+    post:
+      summary: Login professional
+
+      security: []
+
+      requestBody:
+        required: true
+
+        content:
+          application/json:
+            schema:
+              type: object
+
+              required:
+                - email
+                - password
+
+              properties:
+                email:
+                  type: string
+
+                  example: uriel@test.com
+
+                password:
+                  type: string
+
+                  example: 123456
+
+      responses:
+        '200':
+          description: Login successful
+
+  /professions:
+    get:
+      summary: Get all professions
+
+      security:
+        - bearerAuth: []
+
+      responses:
+        '200':
+          description: List of professions
+
+    post:
+      summary: Create a profession
+
+      security:
+        - bearerAuth: []
+
+      requestBody:
+        required: true
+
+        content:
+          application/json:
+            schema:
+              type: object
+
+              properties:
+                name:
+                  type: string
+
+                  example: Electricista
+
+                description:
+                  type: string
+
+                  example: Instalaciones domiciliarias
+
+      responses:
+        '201':
+          description: Created
+
+  /items:
+    get:
+      summary: Get all items
+
+      security:
+        - bearerAuth: []
+
+      responses:
+        '200':
+          description: List of items
+
+    post:
+      summary: Create an item
+
+      security:
+        - bearerAuth: []
+
+      requestBody:
+        required: true
+
+        content:
+          application/json:
+            schema:
+              type: object
+
+              properties:
+                name:
+                  type: string
+
+                  example: Cambio de térmica
+
+                description:
+                  type: string
+
+                  example: Reemplazo llave térmica
+
+                price:
+                  type: number
+
+                  example: 25000
+
+                professionId:
+                  type: integer
+
+                  example: 1
+
+      responses:
+        '201':
+          description: Created
+
+  /clients:
+    get:
+      summary: Get all clients
+
+      security:
+        - bearerAuth: []
+
+      responses:
+        '200':
+          description: List of clients
+
+    post:
+      summary: Create client
+
+      security:
+        - bearerAuth: []
+
+      requestBody:
+        required: true
+
+        content:
+          application/json:
+            schema:
+              type: object
+
+              properties:
+                name:
+                  type: string
+
+                  example: Juan Perez
+
+                phone:
+                  type: string
+
+                  example: 3415555555
+
+                email:
+                  type: string
+
+                  example: juan@gmail.com
+
+                address:
+                  type: string
+
+                  example: Rosario
+
+                notes:
+                  type: string
+
+      responses:
+        '201':
+          description: Created
+
+  /budgets:
+    get:
+      summary: Get all budgets
+
+      security:
+        - bearerAuth: []
+
+      responses:
+        '200':
+          description: List of budgets
+
+    post:
+      summary: Create a budget
+
+      security:
+        - bearerAuth: []
+
+      requestBody:
+        required: true
+
+        content:
+          application/json:
+            schema:
+              type: object
+
+              properties:
+                clientId:
+                  type: integer
+
+                  example: 1
+
+                notes:
+                  type: string
+
+                  example: Presupuesto valido por 15 dias
+
+                items:
+                  type: array
+
+                  items:
+                    type: object
+
+                    properties:
+                      serviceItemId:
+                        type: integer
+
+                        example: 1
+
+                      quantity:
+                        type: integer
+
+                        example: 2
+
+      responses:
+        '201':
+          description: Created
+
+  /budgets/{id}:
+    get:
+      summary: Get budget by id
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: id
+
+          in: path
+
+          required: true
+
+          schema:
+            type: integer
+
+            example: 1
+
+      responses:
+        '200':
+          description: Budget detail
+
+        '401':
+          description: Unauthorized
+
+    put:
+      summary: Update budget
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: id
+
+          in: path
+
+          required: true
+
+          schema:
+            type: integer
+
+            example: 1
+
+      requestBody:
+        required: true
+
+        content:
+          application/json:
+            schema:
+              type: object
+
+      responses:
+        '200':
+          description: Updated
+
+    delete:
+      summary: Delete budget
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: id
+
+          in: path
+
+          required: true
+
+          schema:
+            type: integer
+
+            example: 1
+
+      responses:
+        '200':
+          description: Deleted
+
+  /budgets/{id}/pdf:
+    get:
+      summary: Generate budget PDF
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: id
+
+          in: path
+
+          required: true
+
+          schema:
+            type: integer
+
+            example: 1
+
+      responses:
+        '200':
+          description: PDF generated successfully
+
+          content:
+            application/pdf:
+              schema:
+                type: string
+
+                format: binary
+
+        '401':
+          description: Unauthorized
+
+  /budgets/{id}/whatsapp:
+    get:
+      summary: Generate WhatsApp link
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: id
+
+          in: path
+
+          required: true
+
+          schema:
+            type: integer
+
+            example: 1
+
+      responses:
+        '200':
+          description: WhatsApp link generated
+
+        '401':
+          description: Unauthorized

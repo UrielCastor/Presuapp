@@ -1,0 +1,44 @@
+name: CI Setup
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:6
+        ports:
+          - 27017:27017
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linter
+      run: npm run lint
+      continue-on-error: true # So we can see test results even if linting fails formatting occasionally
+
+    - name: Run tests
+      env:
+        MONGODB_URI: mongodb://localhost:27017/ecommerce_test_ci
+        JWT_SECRET: cisecretkey123
+        NODE_ENV: test
+      run: npm test

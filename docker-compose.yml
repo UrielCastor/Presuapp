@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      target: builder
+    container_name: presuapp_backend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongo:27017/ecommerce
+      - JWT_SECRET=dockersecretkey
+      - NODE_ENV=development
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      - mongo
+    command: npm run dev
+
+  mongo:
+    image: mongo:6
+    container_name: presuapp_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
