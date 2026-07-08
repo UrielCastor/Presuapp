@@ -9,6 +9,7 @@ const navLinks = [
   { path: '/professions', label: 'Profesiones', icon: '🏅' },
   { path: '/budgets', label: 'Presupuestos', icon: '📋' },
   { path: '/profile', label: 'Mi Perfil', icon: '👤' },
+  { path: '/settings', label: 'Configuración', icon: '⚙️' },
 ];
 
 export default function Navbar() {

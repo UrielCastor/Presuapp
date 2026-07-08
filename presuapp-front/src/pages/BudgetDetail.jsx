@@ -622,7 +622,7 @@ ${budget.user?.name || ''}`;
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
               <span style={{ fontSize: '1.8rem', filter: 'drop-shadow(0 0 4px rgba(245, 158, 11, 0.5))' }}>⚡</span>
               <h1 className="page-title" style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800 }}>
-                Presupuesto <span className="brand-text">#{budget.id}</span>
+                Presupuesto: <span className="brand-text">{budget.client?.name || 'Cliente'}</span>
               </h1>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>

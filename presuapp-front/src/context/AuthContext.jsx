@@ -7,6 +7,13 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState('dark');
+
+  const applyTheme = useCallback((themeName) => {
+    const list = ['theme-light', 'theme-dark', 'theme-blue', 'theme-green', 'theme-purple', 'theme-orange', 'theme-black'];
+    list.forEach(t => document.documentElement.classList.remove(t));
+    document.documentElement.classList.add(`theme-${themeName}`);
+  }, []);
 
   // Initialize from localStorage on mount
   useEffect(() => {
@@ -14,10 +21,39 @@ export function AuthProvider({ children }) {
     const storedUser = localStorage.getItem('user');
     if (storedToken && storedUser) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      if (parsedUser && parsedUser.id) {
+        const persistedTheme = localStorage.getItem(`presuapp_theme_${parsedUser.id}`) || 'dark';
+        setTheme(persistedTheme);
+        applyTheme(persistedTheme);
+      }
+    } else {
+      const defaultTheme = localStorage.getItem('presuapp_default_theme') || 'dark';
+      setTheme(defaultTheme);
+      applyTheme(defaultTheme);
     }
     setLoading(false);
-  }, []);
+  }, [applyTheme]);
+
+  // Adjust theme on user change
+  useEffect(() => {
+    if (user && user.id) {
+      const persistedTheme = localStorage.getItem(`presuapp_theme_${user.id}`) || 'dark';
+      setTheme(persistedTheme);
+      applyTheme(persistedTheme);
+    }
+  }, [user, applyTheme]);
+
+  const changeTheme = useCallback((newTheme) => {
+    setTheme(newTheme);
+    applyTheme(newTheme);
+    if (user && user.id) {
+      localStorage.setItem(`presuapp_theme_${user.id}`, newTheme);
+    } else {
+      localStorage.setItem('presuapp_default_theme', newTheme);
+    }
+  }, [user, applyTheme]);
 
   const login = useCallback(async (email, password) => {
     const res = await axiosInstance.post('/auth/login', { email, password });
@@ -29,8 +65,15 @@ export function AuthProvider({ children }) {
     localStorage.setItem('user', JSON.stringify(receivedUser));
     setToken(receivedToken);
     setUser(receivedUser);
+
+    if (receivedUser && receivedUser.id) {
+      const userTheme = localStorage.getItem(`presuapp_theme_${receivedUser.id}`) || 'dark';
+      setTheme(userTheme);
+      applyTheme(userTheme);
+    }
+
     return receivedUser;
-  }, []);
+  }, [applyTheme]);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
@@ -85,6 +128,8 @@ export function AuthProvider({ children }) {
     user,
     token,
     loading,
+    theme,
+    changeTheme,
     isAuthenticated: !!token,
     login,
     logout,

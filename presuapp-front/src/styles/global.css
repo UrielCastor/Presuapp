@@ -2087,3 +2087,236 @@ input, textarea, select {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* ===================================================
+   THEME STYLE SYSTEM (SaaS Themes)
+   =================================================== */
+
+/* 1. CLARO (☀️) */
+html.theme-light {
+  --brand-primary: #2563eb;
+  --brand-primary-dark: #1d4ed8;
+  --brand-primary-light: #3b82f6;
+  --brand-accent: #0891b2;
+  
+  --bg-base: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-input: #f1f5f9;
+  --bg-overlay: rgba(15, 23, 42, 0.6);
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-link: #2563eb;
+
+  --border-color: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --border-focus: #2563eb;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
+  --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.12);
+}
+html.theme-light .navbar {
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom-color: #cbd5e1;
+}
+html.theme-light .btn-logout {
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.18);
+}
+html.theme-light .navbar-link {
+  color: #475569;
+}
+html.theme-light .navbar-link:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+html.theme-light .mobile-drawer-inner {
+  background: #ffffff;
+  border-right-color: #cbd5e1;
+}
+html.theme-light .drawer-header {
+  border-bottom-color: #cbd5e1;
+}
+html.theme-light .drawer-user {
+  background: #f8fafc;
+}
+html.theme-light .drawer-avatar {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+html.theme-light .drawer-link {
+  color: #475569;
+}
+html.theme-light .drawer-link.active {
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+}
+html.theme-light .form-input {
+  color: #0f172a;
+}
+html.theme-light .form-input::placeholder {
+  color: #94a3b8;
+}
+
+/* 2. OSCURO (🌙 - Default) */
+html.theme-dark {
+  --brand-primary: #6366f1;
+  --brand-primary-dark: #4f46e5;
+  --brand-primary-light: #818cf8;
+  --brand-accent: #22d3ee;
+  
+  --bg-base: #0f0f13;
+  --bg-surface: #18181f;
+  --bg-card: #1e1e28;
+  --bg-card-hover: #252532;
+  --bg-input: #252532;
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+
+  --text-primary: #f1f1f5;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --text-link: #818cf8;
+
+  --border-color: rgba(255, 255, 255, 0.07);
+  --border-hover: rgba(255, 255, 255, 0.14);
+}
+
+/* 3. AZUL (💙) */
+html.theme-blue {
+  --brand-primary: #0284c7;
+  --brand-primary-dark: #0369a1;
+  --brand-primary-light: #38bdf8;
+  --brand-accent: #34d399;
+  
+  --bg-base: #0b1329;
+  --bg-surface: #111c3a;
+  --bg-card: #15224f;
+  --bg-card-hover: #1c2c66;
+  --bg-input: #1c2c66;
+  --bg-overlay: rgba(3, 7, 18, 0.8);
+
+  --text-primary: #f0f9ff;
+  --text-secondary: #93c5fd;
+  --text-muted: #60a5fa;
+  --text-link: #38bdf8;
+
+  --border-color: rgba(147, 197, 253, 0.1);
+  --border-hover: rgba(147, 197, 253, 0.2);
+  --shadow-glow: 0 0 20px rgba(2, 132, 199, 0.3);
+}
+
+/* 4. VERDE (💚) */
+html.theme-green {
+  --brand-primary: #059669;
+  --brand-primary-dark: #047857;
+  --brand-primary-light: #34d399;
+  --brand-accent: #22d3ee;
+  
+  --bg-base: #06120e;
+  --bg-surface: #0a1c16;
+  --bg-card: #0f2920;
+  --bg-card-hover: #163d30;
+  --bg-input: #163d30;
+  --bg-overlay: rgba(2, 6, 4, 0.8);
+
+  --text-primary: #ecfdf5;
+  --text-secondary: #a7f3d0;
+  --text-muted: #6ee7b7;
+  --text-link: #34d399;
+
+  --border-color: rgba(167, 243, 208, 0.08);
+  --border-hover: rgba(167, 243, 208, 0.16);
+  --shadow-glow: 0 0 20px rgba(5, 150, 105, 0.3);
+}
+
+/* 5. VIOLETA (🟣) */
+html.theme-purple {
+  --brand-primary: #7c3aed;
+  --brand-primary-dark: #6d28d9;
+  --brand-primary-light: #a78bfa;
+  --brand-accent: #f472b6;
+  
+  --bg-base: #0c051a;
+  --bg-surface: #14092b;
+  --bg-card: #1c0e3d;
+  --bg-card-hover: #261352;
+  --bg-input: #261352;
+  --bg-overlay: rgba(6, 2, 15, 0.8);
+
+  --text-primary: #f5f3ff;
+  --text-secondary: #ddd6fe;
+  --text-muted: #c4b5fd;
+  --text-link: #a78bfa;
+
+  --border-color: rgba(221, 214, 254, 0.08);
+  --border-hover: rgba(221, 214, 254, 0.16);
+  --shadow-glow: 0 0 20px rgba(124, 58, 237, 0.3);
+}
+
+/* 6. NARANJA (🟧) */
+html.theme-orange {
+  --brand-primary: #ea580c;
+  --brand-primary-dark: #c2410c;
+  --brand-primary-light: #f97316;
+  --brand-accent: #facc15;
+  
+  --bg-base: #140a05;
+  --bg-surface: #1b110a;
+  --bg-card: #271910;
+  --bg-card-hover: #332216;
+  --bg-input: #332216;
+  --bg-overlay: rgba(12, 5, 2, 0.8);
+
+  --text-primary: #fff7ed;
+  --text-secondary: #fed7aa;
+  --text-muted: #fdba74;
+  --text-link: #f97316;
+
+  --border-color: rgba(254, 215, 170, 0.08);
+  --border-hover: rgba(254, 215, 170, 0.16);
+  --shadow-glow: 0 0 20px rgba(234, 88, 12, 0.3);
+}
+
+/* 7. NEGRO (⚫) */
+html.theme-black {
+  --brand-primary: #e5e7eb;
+  --brand-primary-dark: #9ca3af;
+  --brand-primary-light: #f9fafb;
+  --brand-accent: #38bdf8;
+  
+  --bg-base: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-card: #121212;
+  --bg-card-hover: #1c1c1c;
+  --bg-input: #1c1c1c;
+  --bg-overlay: rgba(0, 0, 0, 0.95);
+
+  --text-primary: #ffffff;
+  --text-secondary: #d1d5db;
+  --text-muted: #8e8e93;
+  --text-link: #ffffff;
+
+  --border-color: #262626;
+  --border-hover: #404040;
+  --shadow-glow: 0 0 20px rgba(255, 255, 255, 0.15);
+}
+html.theme-black .navbar {
+  background: rgba(0, 0, 0, 0.9);
+  border-bottom-color: #262626;
+}
+html.theme-black .btn-logout {
+  background: transparent;
+  color: #ef4444;
+  border-color: #ef4444;
+}
+html.theme-black .navbar-link.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+

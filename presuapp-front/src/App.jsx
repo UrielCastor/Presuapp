@@ -12,6 +12,7 @@ import Professions from './pages/Professions';
 import Budgets from './pages/Budgets';
 import BudgetDetail from './pages/BudgetDetail';
 import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 import Index from './pages/Index';
 import AdminRoute from './components/AdminRoute';
 import AdminDashboard from './pages/AdminDashboard';
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/budgets" element={<Budgets />} />
             <Route path="/budgets/:id" element={<BudgetDetail />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route 
               path="/admin" 
