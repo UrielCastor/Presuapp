@@ -25,6 +25,7 @@
     "morgan": "^1.10.0",
     "pdfkit": "^0.19.1",
     "prisma": "^5.22.0",
+    "qrcode": "^1.5.4",
     "swagger-ui-express": "^5.0.0",
     "yamljs": "^0.3.0"
   },

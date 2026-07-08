@@ -39,6 +39,9 @@ class PrismaBudgetRepository extends BudgetRepository {
             name: true,
             email: true,
             phone: true,
+            city: true,
+            locality: true,
+            professions: true,
             createdAt: true
           }
         }

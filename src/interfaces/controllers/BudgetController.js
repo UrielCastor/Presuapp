@@ -51,7 +51,8 @@ class BudgetController {
 
   static async getPdf(req, res, next) {
     try {
-      const pdfStream = await budgetUseCases.generatePdf(req.params.id, req.user.id);
+      const { origin } = req.query;
+      const pdfStream = await budgetUseCases.generatePdf(req.params.id, req.user.id, origin);
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename=Presupuesto_${req.params.id}.pdf`);
       pdfStream.pipe(res);

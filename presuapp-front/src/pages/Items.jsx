@@ -16,22 +16,30 @@ const emptyForm = {
 export default function Items() {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
+  const [budgets, setBudgets] = useState([]);
   const [professions, setProfessions] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [deleteWarning, setDeleteWarning] = useState('');
 
   const fetchAll = async () => {
     try {
-      const [itemsRes, professionsRes] = await Promise.all([
+      const [itemsRes, professionsRes, budgetsRes] = await Promise.all([
         axiosInstance.get('/items'),
         axiosInstance.get('/professions'),
+        axiosInstance.get('/budgets'),
       ]);
       setItems(itemsRes.data.data || []);
       setProfessions(professionsRes.data.data || []);
+      setBudgets(budgetsRes.data.data || []);
     } catch {
       setError('Error al cargar los servicios.');
     } finally {
@@ -47,9 +55,61 @@ export default function Items() {
   };
 
   const handleOpenModal = () => {
+    setEditingItem(null);
     setForm(emptyForm);
     setFormError('');
     setModalOpen(true);
+  };
+
+  const handleEditClick = (item) => {
+    setSuccessMessage('');
+    setDeleteWarning('');
+    setEditingItem(item);
+    setForm({
+      name: item.name || '',
+      description: item.description || '',
+      price: item.price !== undefined ? item.price.toString() : '',
+      professionId: item.professionId ? item.professionId.toString() : '',
+    });
+    setFormError('');
+    setModalOpen(true);
+  };
+
+  const handleDeleteClick = (item) => {
+    setSuccessMessage('');
+    setDeleteWarning('');
+    // Como los presupuestos guardan los ítems desnormalizados (copias de textos),
+    // borrar un item no rompe la base de datos ni los presupuestos existentes ya creados.
+    // Para mayor seguridad informativa detectamos si hay coincidencia de nombres con items de presupuestos.
+    const isUsed = budgets.some(b => 
+      b.items && b.items.some(bi => bi.description?.trim().toLowerCase() === item.name?.trim().toLowerCase())
+    );
+    
+    if (isUsed) {
+      // Explicar al usuario pero permitir eliminar ya que no afectará los budgets históricos ya creados.
+      setDeleteWarning(`El servicio "${item.name}" coincide textualmente con conceptos utilizados en tus presupuestos existentes. Si lo eliminás, no se verá afectada tu facturación histórica ni tus presupuestos redactados.`);
+    }
+
+    setItemToDelete(item);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    setSubmitting(true);
+    try {
+      await axiosInstance.delete(`/items/${itemToDelete.id}`);
+      setSuccessMessage(`Servicio "${itemToDelete.name}" eliminado correctamente.`);
+      setDeleteConfirmOpen(false);
+      setItemToDelete(null);
+      fetchAll();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al eliminar el servicio.');
+      setDeleteConfirmOpen(false);
+      setItemToDelete(null);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -62,17 +122,31 @@ export default function Items() {
       setFormError('El precio debe ser un número válido.');
       return;
     }
-    if (user?.userType === 'FREE' && items.length >= 20) {
-      setFormError('Has alcanzado el límite de tu plan FREE. Actualizá a VIP para seguir creando elementos.');
+    
+    // Validar límites para FREE en creación nueva
+    if (!editingItem && user?.userType === 'FREE' && items.length >= 20) {
+      setFormError('Has alcanzado el límite de tu plan FREE (Máximo 20 servicios). Actualizá a VIP para seguir creando elementos.');
       return;
     }
+
     setSubmitting(true);
     try {
-      await axiosInstance.post('/items', {
-        ...form,
+      const payload = {
+        name: form.name.trim(),
+        description: form.description.trim(),
         price: parseFloat(form.price),
         professionId: form.professionId ? parseInt(form.professionId) : undefined,
-      });
+      };
+
+      if (editingItem) {
+        // Editar Servicio
+        await axiosInstance.put(`/items/${editingItem.id}`, payload);
+        setSuccessMessage(`Servicio "${form.name}" actualizado correctamente.`);
+      } else {
+        // Crear Servicio
+        await axiosInstance.post('/items', payload);
+        setSuccessMessage(`Servicio "${form.name}" guardado correctamente.`);
+      }
       setModalOpen(false);
       fetchAll();
     } catch (err) {
@@ -102,6 +176,13 @@ export default function Items() {
         </Button>
       </div>
 
+      {successMessage && (
+        <div className="alert alert-success" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '12px 16px', borderRadius: 'var(--radius-md)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="alert-icon">✅</span>
+          {successMessage}
+        </div>
+      )}
+
       {error && (
         <div className="alert alert-error">
           <span className="alert-icon">⚠️</span>
@@ -126,8 +207,9 @@ export default function Items() {
               <tr>
                 <th>Nombre</th>
                 <th>Descripción</th>
-                <th>Profesión</th>
-                <th>Precio</th>
+                <th>Profesión / Rubro</th>
+                <th>Precio sugerido</th>
+                <th className="text-center" style={{ width: '180px' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -146,6 +228,25 @@ export default function Items() {
                     ) : '—'}
                   </td>
                   <td className="price-cell">{formatCurrency(item.price)}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEditClick(item)}
+                        style={{ color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+                      >
+                        ✏️ Editar
+                      </Button>
+                      <Button 
+                        variant="danger" 
+                        size="sm" 
+                        onClick={() => handleDeleteClick(item)}
+                      >
+                        🗑️ Eliminar
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -171,18 +272,38 @@ export default function Items() {
                 <span className="item-price">{formatCurrency(item.price)}</span>
               </div>
               {item.description && (
-                <p className="item-description">{item.description}</p>
+                <p className="item-description" style={{ marginBottom: '16px' }}>{item.description}</p>
               )}
+              {/* Mobile Actions */}
+              <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  fullWidth
+                  onClick={() => handleEditClick(item)}
+                  style={{ color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+                >
+                  ✏️ Editar
+                </Button>
+                <Button 
+                  variant="danger" 
+                  size="sm" 
+                  fullWidth
+                  onClick={() => handleDeleteClick(item)}
+                >
+                  🗑️ Eliminar
+                </Button>
+              </div>
             </Card>
           ))
         )}
       </div>
 
-      {/* Modal */}
+      {/* Item Modal */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Nuevo Servicio"
+        title={editingItem ? '✏️ Editar Servicio' : 'Nuevo Servicio'}
         size="md"
       >
         <form onSubmit={handleSubmit} noValidate>
@@ -226,7 +347,7 @@ export default function Items() {
             </div>
           </div>
           <div className="form-group">
-            <label className="form-label">Profesión</label>
+            <label className="form-label">Profesión / Rubro</label>
             <select
               name="professionId"
               className="form-input form-select"
@@ -252,11 +373,41 @@ export default function Items() {
               Cancelar
             </Button>
             <Button type="submit" variant="primary" loading={submitting}>
-              Guardar Servicio
+              {editingItem ? 'Guardar Cambios' : 'Guardar Servicio'}
             </Button>
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmOpen && itemToDelete && (
+        <div className="modal-overlay">
+          <div className="modal modal-sm">
+            <div className="modal-header">
+              <h2 className="modal-title">Confirmar Eliminación</h2>
+              <button className="modal-close" onClick={() => setDeleteConfirmOpen(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{ padding: '20px 0' }}>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                ¿Está seguro de eliminar el servicio <strong>{itemToDelete.name}</strong>?
+              </p>
+              {deleteWarning && (
+                <p style={{ fontSize: '0.82rem', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.08)', padding: '10px', borderRadius: '6px', marginTop: '10px', marginBottom: 0, border: '1px dashed rgba(245, 158, 11, 0.2)' }}>
+                  ⚠️ {deleteWarning}
+                </p>
+              )}
+            </div>
+            <div className="modal-actions" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '15px' }}>
+              <Button variant="ghost" onClick={() => setDeleteConfirmOpen(false)}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={handleConfirmDelete} loading={submitting}>
+                Eliminar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

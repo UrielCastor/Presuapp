@@ -17,18 +17,28 @@ const emptyForm = {
 export default function Clients() {
   const { user } = useAuth();
   const [clients, setClients] = useState([]);
+  const [budgets, setBudgets] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState(null);
+  const [editingClient, setEditingClient] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [deleteWarning, setDeleteWarning] = useState('');
   const [search, setSearch] = useState('');
 
   const fetchClients = async () => {
     try {
-      const res = await axiosInstance.get('/clients');
-      setClients(res.data.data || []);
+      const [clientsRes, budgetsRes] = await Promise.all([
+        axiosInstance.get('/clients'),
+        axiosInstance.get('/budgets'),
+      ]);
+      setClients(clientsRes.data.data || []);
+      setBudgets(budgetsRes.data.data || []);
     } catch {
       setError('Error al cargar clientes.');
     } finally {
@@ -44,9 +54,57 @@ export default function Clients() {
   };
 
   const handleOpenModal = () => {
+    setEditingClient(null);
     setForm(emptyForm);
     setFormError('');
     setModalOpen(true);
+  };
+
+  const handleEditClick = (client) => {
+    setSuccessMessage('');
+    setDeleteWarning('');
+    setEditingClient(client);
+    setForm({
+      name: client.name || '',
+      phone: client.phone || '',
+      email: client.email || '',
+      address: client.address || '',
+      notes: client.notes || '',
+    });
+    setFormError('');
+    setModalOpen(true);
+  };
+
+  const handleDeleteClick = (client) => {
+    setSuccessMessage('');
+    setDeleteWarning('');
+    // Filtrar si el cliente posee presupuestos
+    const associated = budgets.filter((b) => b.clientId === client.id);
+    if (associated.length > 0) {
+      setDeleteWarning(`No es posible eliminar al cliente "${client.name}" porque posee ${associated.length} presupuesto(s) asociado(s) (Ej: Presupuesto #${associated[0].id}). Para mantener la consistencia histórica de la base de datos, debés eliminar primero todos sus presupuestos asociados.`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setClientToDelete(client);
+      setDeleteConfirmOpen(true);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!clientToDelete) return;
+    setSubmitting(true);
+    try {
+      await axiosInstance.delete(`/clients/${clientToDelete.id}`);
+      setSuccessMessage(`Cliente "${clientToDelete.name}" eliminado con éxito.`);
+      setDeleteConfirmOpen(false);
+      setClientToDelete(null);
+      fetchClients();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al eliminar el cliente.');
+      setDeleteConfirmOpen(false);
+      setClientToDelete(null);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -55,13 +113,24 @@ export default function Clients() {
       setFormError('El nombre es obligatorio.');
       return;
     }
-    if (user?.userType === 'FREE' && clients.length >= 50) {
+    
+    // Validar límite para plan FREE en creación nueva
+    if (!editingClient && user?.userType === 'FREE' && clients.length >= 50) {
       setFormError('Has alcanzado el límite de tu plan FREE. Actualizá a VIP para seguir creando elementos.');
       return;
     }
+
     setSubmitting(true);
     try {
-      await axiosInstance.post('/clients', form);
+      if (editingClient) {
+        // Modo Edición
+        await axiosInstance.put(`/clients/${editingClient.id}`, form);
+        setSuccessMessage(`Cliente "${form.name}" actualizado correctamente.`);
+      } else {
+        // Modo Creación
+        await axiosInstance.post('/clients', form);
+        setSuccessMessage(`Cliente "${form.name}" guardado correctamente.`);
+      }
       setModalOpen(false);
       fetchClients();
     } catch (err) {
@@ -91,6 +160,22 @@ export default function Clients() {
           + Agregar Cliente
         </Button>
       </div>
+
+      {successMessage && (
+        <div className="alert alert-success" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '12px 16px', borderRadius: 'var(--radius-md)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="alert-icon">✅</span>
+          {successMessage}
+        </div>
+      )}
+
+      {deleteWarning && (
+        <div className="alert alert-warning" style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', border: '1px dashed rgba(239, 68, 68, 0.2)', padding: '16px', borderRadius: 'var(--radius-md)', marginBottom: '20px' }}>
+          <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+            <span>⚠️ Regla de Integridad de Datos</span>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.88rem' }}>{deleteWarning}</p>
+        </div>
+      )}
 
       {error && (
         <div className="alert alert-error">
@@ -131,6 +216,7 @@ export default function Clients() {
                 <th>Email</th>
                 <th>Dirección</th>
                 <th>Notas</th>
+                <th className="text-center" style={{ width: '180px' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -148,6 +234,25 @@ export default function Clients() {
                   <td>{c.email || '—'}</td>
                   <td>{c.address || '—'}</td>
                   <td className="notes-cell">{c.notes || '—'}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEditClick(c)}
+                        style={{ color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+                      >
+                        ✏️ Editar
+                      </Button>
+                      <Button 
+                        variant="danger" 
+                        size="sm" 
+                        onClick={() => handleDeleteClick(c)}
+                      >
+                        🗑️ Eliminar
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -171,7 +276,7 @@ export default function Clients() {
                   {c.email && <p className="client-card-email">{c.email}</p>}
                 </div>
               </div>
-              <div className="client-card-details">
+              <div className="client-card-details" style={{ marginBottom: '16px' }}>
                 {c.phone && (
                   <div className="detail-row">
                     <span className="detail-icon">📞</span>
@@ -191,16 +296,36 @@ export default function Clients() {
                   </div>
                 )}
               </div>
+              {/* Mobile Actions */}
+              <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  fullWidth
+                  onClick={() => handleEditClick(c)}
+                  style={{ color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+                >
+                  ✏️ Editar
+                </Button>
+                <Button 
+                  variant="danger" 
+                  size="sm" 
+                  fullWidth
+                  onClick={() => handleDeleteClick(c)}
+                >
+                  🗑️ Eliminar
+                </Button>
+              </div>
             </Card>
           ))
         )}
       </div>
 
-      {/* Modal */}
+      {/* Form Modal */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Nuevo Cliente"
+        title={editingClient ? '✏️ Editar Cliente' : 'Nuevo Cliente'}
         size="md"
       >
         <form onSubmit={handleSubmit} noValidate>
@@ -250,11 +375,11 @@ export default function Clients() {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">Notas</label>
+            <label className="form-label">Observaciones / Notas</label>
             <textarea
               name="notes"
               className="form-input form-textarea"
-              placeholder="Información adicional..."
+              placeholder="Información adicional o condiciones particulares..."
               value={form.notes}
               onChange={handleChange}
               rows={3}
@@ -277,11 +402,39 @@ export default function Clients() {
               Cancelar
             </Button>
             <Button type="submit" variant="primary" loading={submitting}>
-              Guardar Cliente
+              {editingClient ? 'Guardar Cambios' : 'Guardar Cliente'}
             </Button>
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmOpen && clientToDelete && (
+        <div className="modal-overlay">
+          <div className="modal modal-sm">
+            <div className="modal-header">
+              <h2 className="modal-title">Confirmar Eliminación</h2>
+              <button className="modal-close" onClick={() => setDeleteConfirmOpen(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{ padding: '20px 0' }}>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                ¿Está seguro de eliminar al cliente <strong>{clientToDelete.name}</strong>?
+              </p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px', marginBottom: 0 }}>
+                Esta acción no se puede deshacer de forma directa.
+              </p>
+            </div>
+            <div className="modal-actions" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '15px' }}>
+              <Button variant="ghost" onClick={() => setDeleteConfirmOpen(false)}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={handleConfirmDelete} loading={submitting}>
+                Eliminar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

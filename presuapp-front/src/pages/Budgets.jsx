@@ -17,6 +17,7 @@ export default function Budgets() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
+  const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
   // Form state
@@ -138,6 +139,10 @@ export default function Budgets() {
     return map[status] || status;
   };
 
+  const filtered = budgets.filter((b) =>
+    b.client?.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
   if (loadingData) return <Loading message="Cargando presupuestos..." />;
 
   return (
@@ -172,10 +177,34 @@ export default function Budgets() {
         return null;
       })()}
 
+      {/* Modern Search Bar */}
+      {budgets.length > 0 && (
+        <div className="search-bar" style={{ marginBottom: '20px' }}>
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="🔍 Buscar presupuesto por nombre del cliente..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      )}
+
       {/* Desktop table */}
       <div className="table-wrapper hide-mobile">
         {budgets.length === 0 ? (
           <EmptyState onAdd={handleOpenModal} />
+        ) : filtered.length === 0 ? (
+          <div className="empty-state" style={{ padding: '40px 20px', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-lg)', background: 'var(--bg-card)', textAlign: 'center' }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>🔍</div>
+            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '20px', fontWeight: 600 }}>
+              No se encontraron presupuestos para esa búsqueda.
+            </p>
+            <Button variant="ghost" onClick={() => setSearch('')}>
+              🧹 Limpiar búsqueda
+            </Button>
+          </div>
         ) : (
           <table className="data-table">
             <thead>
@@ -189,7 +218,7 @@ export default function Budgets() {
               </tr>
             </thead>
             <tbody>
-              {budgets.map((b) => (
+              {filtered.map((b) => (
                 <tr key={b.id}>
                   <td><span className="budget-number">#{b.id}</span></td>
                   <td>{b.client?.name || '—'}</td>
@@ -220,8 +249,18 @@ export default function Budgets() {
       <div className="card-list show-mobile">
         {budgets.length === 0 ? (
           <EmptyState onAdd={handleOpenModal} />
+        ) : filtered.length === 0 ? (
+          <div className="empty-state" style={{ padding: '40px 20px', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-lg)', background: 'var(--bg-card)', textAlign: 'center', width: '100%' }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>🔍</div>
+            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '20px', fontWeight: 600 }}>
+              No se encontraron presupuestos para esa búsqueda.
+            </p>
+            <Button variant="ghost" onClick={() => setSearch('')}>
+              🧹 Limpiar búsqueda
+            </Button>
+          </div>
         ) : (
-          budgets.map((b) => (
+          filtered.map((b) => (
             <Card
               key={b.id}
               className="budget-card"
