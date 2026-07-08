@@ -172,3 +172,55 @@
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+/* ─── Extra Responsive Polishes (Mobile UX & Touch Target Tuning) ─── */
+@media (max-width: 768px) {
+  /* Dynamic themes override for bottom sticky bar */
+  .bottom-actions {
+    background: var(--bg-surface) !important;
+    border-top-color: var(--border-color) !important;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  /* Expand margins in budget details for touch ease */
+  .btn, button {
+    min-height: 44px; /* Apple iOS Human Interface Touch Target standard */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .form-group {
+    margin-bottom: 18px;
+  }
+
+  /* Symmetrical inner padding on headers */
+  .page-container {
+    padding: 16px 14px 120px !important; /* Bottom offset for bottom-actions menu */
+  }
+}
+
+@media (max-width: 480px) {
+  .register-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  /* Profile page lists flex layout collapsing */
+  .profile-grid-custom {
+    grid-template-columns: 1fr !important;
+  }
+
+  .logo-title {
+    font-size: 1.8rem !important;
+  }
+
+  .stat-card {
+    padding: 16px 12px !important;
+  }
+
+  .stat-value {
+    font-size: 1.45rem !important;
+  }
+}
+

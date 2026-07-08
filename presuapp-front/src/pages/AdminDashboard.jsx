@@ -322,7 +322,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Sección Gráficos Nativos */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px', marginBottom: '40px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '40px' }}>
                 
                 {/* Grafico 1: Crecimiento de Registros e Ingresos */}
                 <Card>
@@ -678,7 +678,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
                 <div>
                   <span className="field-label" style={{ display: 'block', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Email</span>
                   <span style={{ fontSize: '0.92rem' }}>{selectedUser.email}</span>
@@ -699,7 +699,7 @@ export default function AdminDashboard() {
 
               <div style={{ background: 'var(--bg-app)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
                 <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>💳 Información de Plan y Membresía</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                   <div>
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Membresía actual (Rol):</span>
                     <strong style={{ display: 'block', fontSize: '1rem', color: selectedUser.userType === 'VIP' ? '#f59e0b' : 'var(--text-primary)' }}>
