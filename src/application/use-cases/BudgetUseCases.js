@@ -269,11 +269,88 @@ class BudgetUseCases {
     const rayStartY = footerY + 32;
     doc.fillColor('#FBBF24'); // Yellow/Amber bolt
     doc.path(`M ${rayStartX} ${rayStartY} L ${rayStartX - 5} ${rayStartY + 9} L ${rayStartX} ${rayStartY + 9} L ${rayStartX - 3} ${rayStartY + 18} L ${rayStartX + 6} ${rayStartY + 8} L ${rayStartX + 1} ${rayStartY + 8} Z`).fill();
-    
     doc.fillColor('#FFFFFF').fontSize(11).text('PresuApp', 472, footerY + 36);
 
     doc.end();
     return doc;
+  }
+
+  async sendBudgetEmail(id, userId, subject, body, origin) {
+    const budget = await this.getBudget(id, userId);
+    if (!budget.client || !budget.client.email) {
+      throw new Error('El cliente de este presupuesto no tiene un correo electrónico de contacto configurado.');
+    }
+
+    const numberFormatted = String(budget.id).padStart(4, '0');
+    const cleanName = budget.client.name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, '-');
+    
+    const budgetDate = budget.createdAt ? new Date(budget.createdAt) : new Date();
+    const year = budgetDate.getFullYear();
+    const month = String(budgetDate.getMonth() + 1).padStart(2, '0');
+    const day = String(budgetDate.getDate()).padStart(2, '0');
+    const dateFormatted = `${year}-${month}-${day}`;
+
+    const filename = `Presupuesto-${numberFormatted}-${cleanName}-${dateFormatted}.pdf`;
+
+    const pdfStream = await this.generatePdf(id, userId, origin);
+
+    const nodemailer = require('nodemailer');
+    let transporter;
+
+    if (process.env.SMTP_HOST) {
+      transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+    } else {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+    }
+
+    const fromEmail = budget.user.email || 'no-reply@presuapp.com';
+    const toEmail = budget.client.email;
+
+    const mailOptions = {
+      from: `"${budget.user.name || 'PresuApp'}" <${fromEmail}>`,
+      to: toEmail,
+      subject: subject || `Presupuesto #${budget.number || budget.id}`,
+      text: body || `Hola ${budget.client.name},\nSe adjunta el presupuesto en formato PDF.\n\nSaludos.`,
+      attachments: [
+        {
+          filename: filename,
+          content: pdfStream,
+          contentType: 'application/pdf',
+        },
+      ],
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    
+    if (!process.env.SMTP_HOST) {
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      console.log('Correo de pruebas enviado por Ethereal:', previewUrl);
+      return { success: true, previewUrl, messageId: info.messageId };
+    }
+
+    return { success: true, messageId: info.messageId };
   }
 }
 

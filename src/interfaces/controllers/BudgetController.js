@@ -60,5 +60,16 @@ class BudgetController {
       next(e);
     }
   }
+
+  static async sendEmail(req, res, next) {
+    try {
+      const { subject, body } = req.body;
+      const origin = req.headers.origin; 
+      const result = await budgetUseCases.sendBudgetEmail(req.params.id, req.user.id, subject, body, origin);
+      res.status(200).json(formatResponse(true, result, 'Email sent successfully'));
+    } catch (e) {
+      next(e);
+    }
+  }
 }
 module.exports = BudgetController;

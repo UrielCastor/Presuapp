@@ -11,5 +11,6 @@ router.put('/:id', protectRoute, BudgetController.updateBudget);
 router.delete('/:id', protectRoute, BudgetController.deleteBudget);
 router.get('/:id/whatsapp', protectRoute, BudgetController.getWhatsappLink);
 router.get('/:id/pdf', protectRoute, BudgetController.getPdf);
+router.post('/:id/send-email', protectRoute, BudgetController.sendEmail);
 
 module.exports = router;

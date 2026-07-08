@@ -12,6 +12,7 @@ export default function Budgets() {
   const [budgets, setBudgets] = useState([]);
   const [clients, setClients] = useState([]);
   const [items, setItems] = useState([]);
+  const [professions, setProfessions] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -22,20 +23,23 @@ export default function Budgets() {
 
   // Form state
   const [selectedClientId, setSelectedClientId] = useState('');
+  const [selectedProfessionId, setSelectedProfessionId] = useState('');
   const [notes, setNotes] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
   const [discount, setDiscount] = useState(0);
 
   const fetchAll = async () => {
     try {
-      const [budgetsRes, clientsRes, itemsRes] = await Promise.all([
+      const [budgetsRes, clientsRes, itemsRes, professionsRes] = await Promise.all([
         axiosInstance.get('/budgets'),
         axiosInstance.get('/clients'),
         axiosInstance.get('/items'),
+        axiosInstance.get('/professions'),
       ]);
       setBudgets(budgetsRes.data.data || []);
       setClients(clientsRes.data.data || []);
       setItems(itemsRes.data.data || []);
+      setProfessions(professionsRes.data.data || []);
     } catch {
       setError('Error al cargar los presupuestos.');
     } finally {
@@ -47,6 +51,7 @@ export default function Budgets() {
 
   const handleOpenModal = () => {
     setSelectedClientId('');
+    setSelectedProfessionId('');
     setNotes('');
     setSelectedItems([]);
     setDiscount(0);
@@ -103,6 +108,10 @@ export default function Budgets() {
       setFormError('Seleccioná un cliente.');
       return;
     }
+    if (professions.length >= 2 && !selectedProfessionId) {
+      setFormError('Seleccioná una profesión.');
+      return;
+    }
     if (selectedItems.length === 0) {
       setFormError('Agregá al menos un servicio.');
       return;
@@ -144,6 +153,20 @@ export default function Budgets() {
   );
 
   if (loadingData) return <Loading message="Cargando presupuestos..." />;
+
+  // Filter available items for creation select dropdown based on professions
+  const availableItems = items.filter((i) => {
+    if (selectedItems.find((si) => si.serviceItemId === i.id)) return false;
+    if (professions.length >= 2) {
+      return i.professionId === parseInt(selectedProfessionId);
+    }
+    if (professions.length === 1) {
+      return i.professionId === professions[0].id;
+    }
+    return true;
+  });
+
+  const isServiceSelectDisabled = professions.length >= 2 && !selectedProfessionId;
 
   return (
     <div className="page-container">
@@ -308,22 +331,46 @@ export default function Budgets() {
             </select>
           </div>
 
+          {/* Profession Selector (mandatory if multiple) */}
+          {professions.length >= 2 && (
+            <div className="form-group">
+              <label className="form-label">Profesión *</label>
+              <select
+                className="form-input form-select"
+                value={selectedProfessionId}
+                onChange={(e) => {
+                  setSelectedProfessionId(e.target.value);
+                  setSelectedItems([]); // Clear selected items dynamically
+                  setFormError('');
+                }}
+              >
+                <option value="">Seleccioná una profesión</option>
+                {professions.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Add service */}
           <div className="form-group">
             <label className="form-label">Agregar Servicio</label>
             <select
               className="form-input form-select"
-              defaultValue=""
-              onChange={(e) => { handleAddItem(e.target.value); e.target.value = ''; }}
+              value=""
+              disabled={isServiceSelectDisabled}
+              onChange={(e) => { handleAddItem(e.target.value); }}
             >
-              <option value="">Seleccioná un servicio para agregar</option>
-              {items
-                .filter((i) => !selectedItems.find((si) => si.serviceItemId === i.id))
-                .map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name} — {formatCurrency(i.price)}
-                  </option>
-                ))}
+              <option value="">
+                {isServiceSelectDisabled 
+                  ? '⚠️ Seleccioná primero una profesión' 
+                  : 'Seleccioná un servicio para agregar'}
+              </option>
+              {availableItems.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name} — {formatCurrency(i.price)}
+                </option>
+              ))}
             </select>
           </div>
 

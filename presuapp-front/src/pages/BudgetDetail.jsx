@@ -126,10 +126,67 @@ export default function BudgetDetail() {
   };
 
   const handleShareEmail = () => {
+    if (!budget) return;
+    
+    const currentItems = budget.items || budget.budgetItems || [];
+    
+    let itemsText = '';
+    currentItems.forEach(item => {
+      const name = item.description || item.name || 'Servicio';
+      const qty = item.quantity || 1;
+      const price = item.unitPrice || item.price || 0;
+      const subtotal = item.subtotal || (price * qty);
+      itemsText += `- ${name} (Cant: ${qty}) x $${price} = $${subtotal}\n`;
+    });
+
+    const subtotalVal = currentItems.reduce((acc, bi) => {
+      const price = bi.unitPrice || bi.price || bi.serviceItem?.price || 0;
+      const qty = bi.quantity || 1;
+      return acc + (price * qty);
+    }, 0);
+
+    let totalsText = `Total: $${budget.total.toFixed(2)}`;
+    if (budget.discount > 0) {
+      totalsText = `Subtotal: $${subtotalVal.toFixed(2)}\n`;
+      totalsText += `Descuento (${budget.discount}%): -$${(subtotalVal * (budget.discount / 100)).toFixed(2)}\n`;
+      totalsText += `Total Final: $${budget.total.toFixed(2)}`;
+    }
+
     const publicUrl = `${window.location.origin}/public/budget/${id}`;
-    const subject = encodeURIComponent(`Presupuesto #${budget?.number || id} de ${budget?.user?.name || ''}`);
-    const body = encodeURIComponent(`Hola ${budget?.client?.name || ''},\n\nTe adjunto el enlace para ver el presupuesto correspondiente por los servicios acordados:\n\n${publicUrl}\n\nQuedo a tu disposición.\nSaludos cordiales.`);
-    window.location.href = `mailto:${budget?.client?.email || ''}?subject=${subject}&body=${body}`;
+    const subject = `Presupuesto Nº ${budget.number || id} - ${budget.user?.name || ''}`;
+    
+    const body = `Hola ${budget.client?.name || ''},
+
+Te comparto el presupuesto completo detallado por los servicios acordados:
+
+--------------------------------------------------
+PRESUPUESTO Nº ${budget.number || id}
+Fecha: ${new Date(budget.date || budget.createdAt).toLocaleDateString()}
+--------------------------------------------------
+PROFESIONAL:
+Nombre: ${budget.user?.name || ''}
+Rubro: ${budget.user?.professions?.[0]?.name || 'Servicios'}
+Contacto: ${budget.user?.phone || ''}
+--------------------------------------------------
+SERVICIOS CONTRATADOS:
+${itemsText}
+--------------------------------------------------
+${totalsText}
+--------------------------------------------------
+${budget.notes ? `Observaciones: ${budget.notes}\n--------------------------------------------------\n` : ''}
+
+Podés revisar y descargar el presupuesto formal en formato PDF ingresando al siguiente enlace:
+${publicUrl}
+
+Quedo a tu entera disposición ante cualquier duda o consulta.
+
+Saludos cordiales,
+${budget.user?.name || ''}`;
+
+    const encodedSubject = encodeURIComponent(subject);
+    const encodedBody = encodeURIComponent(body);
+    
+    window.location.href = `mailto:${budget.client?.email || ''}?subject=${encodedSubject}&body=${encodedBody}`;
   };
 
   const handleDuplicate = async () => {
@@ -1051,7 +1108,6 @@ export default function BudgetDetail() {
           </div>
         </div>
       )}
-
       {/* Mobile Sticky Action Panel */}
       <div className="bottom-actions show-mobile">
         <div style={{ display: 'flex', gap: '8px' }}>

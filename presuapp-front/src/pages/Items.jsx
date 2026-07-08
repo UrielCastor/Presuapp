@@ -29,6 +29,10 @@ export default function Items() {
   const [formError, setFormError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [deleteWarning, setDeleteWarning] = useState('');
+  
+  // Search and Profession-grouping states
+  const [search, setSearch] = useState('');
+  const [selectedProfessionId, setSelectedProfessionId] = useState(null);
 
   const fetchAll = async () => {
     try {
@@ -37,9 +41,16 @@ export default function Items() {
         axiosInstance.get('/professions'),
         axiosInstance.get('/budgets'),
       ]);
-      setItems(itemsRes.data.data || []);
-      setProfessions(professionsRes.data.data || []);
+      const fetchedItems = itemsRes.data.data || [];
+      const fetchedProfessions = professionsRes.data.data || [];
+      setItems(fetchedItems);
+      setProfessions(fetchedProfessions);
       setBudgets(budgetsRes.data.data || []);
+
+      // If user has 2 or more professions and none is selected yet, select the first one by default
+      if (fetchedProfessions.length >= 2 && !selectedProfessionId) {
+        setSelectedProfessionId(fetchedProfessions[0].id);
+      }
     } catch {
       setError('Error al cargar los servicios.');
     } finally {
@@ -56,7 +67,19 @@ export default function Items() {
 
   const handleOpenModal = () => {
     setEditingItem(null);
-    setForm(emptyForm);
+    
+    // Auto-select active profession tab in form if relevant
+    const initialProfessionId = 
+      (selectedProfessionId && selectedProfessionId !== 'unassigned') 
+        ? selectedProfessionId.toString() 
+        : '';
+
+    setForm({
+      name: '',
+      description: '',
+      price: '',
+      professionId: initialProfessionId,
+    });
     setFormError('');
     setModalOpen(true);
   };
@@ -78,15 +101,11 @@ export default function Items() {
   const handleDeleteClick = (item) => {
     setSuccessMessage('');
     setDeleteWarning('');
-    // Como los presupuestos guardan los ítems desnormalizados (copias de textos),
-    // borrar un item no rompe la base de datos ni los presupuestos existentes ya creados.
-    // Para mayor seguridad informativa detectamos si hay coincidencia de nombres con items de presupuestos.
     const isUsed = budgets.some(b => 
       b.items && b.items.some(bi => bi.description?.trim().toLowerCase() === item.name?.trim().toLowerCase())
     );
     
     if (isUsed) {
-      // Explicar al usuario pero permitir eliminar ya que no afectará los budgets históricos ya creados.
       setDeleteWarning(`El servicio "${item.name}" coincide textualmente con conceptos utilizados en tus presupuestos existentes. Si lo eliminás, no se verá afectada tu facturación histórica ni tus presupuestos redactados.`);
     }
 
@@ -123,7 +142,6 @@ export default function Items() {
       return;
     }
     
-    // Validar límites para FREE en creación nueva
     if (!editingItem && user?.userType === 'FREE' && items.length >= 20) {
       setFormError('Has alcanzado el límite de tu plan FREE (Máximo 20 servicios). Actualizá a VIP para seguir creando elementos.');
       return;
@@ -135,15 +153,13 @@ export default function Items() {
         name: form.name.trim(),
         description: form.description.trim(),
         price: parseFloat(form.price),
-        professionId: form.professionId ? parseInt(form.professionId) : undefined,
+        professionId: form.professionId ? parseInt(form.professionId) : null,
       };
 
       if (editingItem) {
-        // Editar Servicio
         await axiosInstance.put(`/items/${editingItem.id}`, payload);
         setSuccessMessage(`Servicio "${form.name}" actualizado correctamente.`);
       } else {
-        // Crear Servicio
         await axiosInstance.post('/items', payload);
         setSuccessMessage(`Servicio "${form.name}" guardado correctamente.`);
       }
@@ -162,14 +178,38 @@ export default function Items() {
       currency: 'ARS',
     }).format(amount || 0);
 
+  // Grouping filter logic
+  const hasMultipleProfessions = professions.length >= 2;
+  
+  // Filter by selected profession
+  const getFilteredByProfession = () => {
+    if (!hasMultipleProfessions) return items;
+    if (selectedProfessionId === 'unassigned') {
+      return items.filter(item => !item.professionId);
+    }
+    return items.filter(item => item.professionId === selectedProfessionId);
+  };
+
+  // Filter both by profession & search textbox
+  const filtered = getFilteredByProfession().filter(
+    (item) =>
+      item.name?.toLowerCase().includes(search.toLowerCase()) ||
+      item.description?.toLowerCase().includes(search.toLowerCase())
+  );
+
   if (loadingData) return <Loading message="Cargando servicios..." />;
 
   return (
     <div className="page-container">
+      {/* HEADER */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Servicios</h1>
-          <p className="page-subtitle">{items.length} servicios disponibles</p>
+          <p className="page-subtitle">
+            {hasMultipleProfessions 
+              ? `${filtered.length} servicios de la profesión seleccionada` 
+              : `${items.length} servicios disponibles`}
+          </p>
         </div>
         <Button variant="primary" onClick={handleOpenModal}>
           + Agregar Servicio
@@ -184,7 +224,7 @@ export default function Items() {
       )}
 
       {error && (
-        <div className="alert alert-error">
+        <div className="alert alert-error" style={{ marginBottom: '20px' }}>
           <span className="alert-icon">⚠️</span>
           {error}
         </div>
@@ -197,10 +237,113 @@ export default function Items() {
         </div>
       )}
 
+      {/* PROFESSION FILTER (Visible if >= 2 professions) */}
+      {hasMultipleProfessions && (
+        <div 
+          style={{ 
+            display: 'flex', 
+            gap: '10px', 
+            flexWrap: 'wrap', 
+            marginBottom: '20px',
+            background: 'var(--bg-surface)',
+            padding: '12px 16px',
+            borderRadius: '12px',
+            border: '1px solid var(--border-color)'
+          }}
+        >
+          {professions.map((prof) => {
+            const count = items.filter((i) => i.professionId === prof.id).length;
+            const isSelected = selectedProfessionId === prof.id;
+            return (
+              <button
+                key={prof.id}
+                onClick={() => setSelectedProfessionId(prof.id)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: `1px solid ${isSelected ? 'var(--brand-primary)' : 'var(--border-color)'}`,
+                  background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                  color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontSize: '0.85rem',
+                  fontWeight: isSelected ? 700 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>💼 {prof.name}</span>
+                <span style={{
+                  background: isSelected ? 'var(--brand-primary)' : 'rgba(255, 255, 255, 0.08)',
+                  color: '#fff',
+                  fontSize: '0.72rem',
+                  padding: '2px 7px',
+                  borderRadius: '999px',
+                  fontWeight: 650
+                }}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+          {items.some(i => !i.professionId) && (() => {
+            const countUnassigned = items.filter(i => !i.professionId).length;
+            const isSelected = selectedProfessionId === 'unassigned';
+            return (
+              <button
+                onClick={() => setSelectedProfessionId('unassigned')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: `1px solid ${isSelected ? 'var(--brand-primary)' : 'var(--border-color)'}`,
+                  background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                  color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontSize: '0.85rem',
+                  fontWeight: isSelected ? 700 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>📦 Sin clasificar</span>
+                <span style={{
+                  background: isSelected ? 'var(--brand-primary)' : 'rgba(255, 255, 255, 0.08)',
+                  color: '#fff',
+                  fontSize: '0.72rem',
+                  padding: '2px 7px',
+                  borderRadius: '999px',
+                  fontWeight: 650
+                }}>
+                  {countUnassigned}
+                </span>
+              </button>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Search bar */}
+      <div className="search-bar" style={{ marginBottom: '20px' }}>
+        <span className="search-icon">🔍</span>
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Buscar por nombre o descripción de servicio..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
       {/* Desktop table */}
       <div className="table-wrapper hide-mobile">
-        {items.length === 0 ? (
-          <EmptyState onAdd={handleOpenModal} />
+        {filtered.length === 0 ? (
+          <EmptyState 
+            onAdd={handleOpenModal} 
+            hasFilters={search || (hasMultipleProfessions && selectedProfessionId)} 
+          />
         ) : (
           <table className="data-table">
             <thead>
@@ -213,7 +356,7 @@ export default function Items() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {filtered.map((item) => (
                 <tr key={item.id}>
                   <td>
                     <div className="item-name-cell">
@@ -259,15 +402,18 @@ export default function Items() {
 
       {/* Mobile cards */}
       <div className="card-list show-mobile">
-        {items.length === 0 ? (
-          <EmptyState onAdd={handleOpenModal} />
+        {filtered.length === 0 ? (
+          <EmptyState 
+            onAdd={handleOpenModal} 
+            hasFilters={search || (hasMultipleProfessions && selectedProfessionId)}
+          />
         ) : (
-          items.map((item) => (
+          filtered.map((item) => (
             <Card key={item.id} className="item-card">
               <div className="item-card-header">
                 <div className="item-icon large">🔧</div>
-                <div>
-                  <h3 className="item-card-name">{item.name}</h3>
+                <div style={{ flex: 1, paddingRight: '8px' }}>
+                  <h3 className="item-card-name" style={{ fontSize: '0.95rem' }}>{item.name}</h3>
                   {(() => {
                     const prof = professions.find(p => p.id === item.professionId);
                     return prof ? (
@@ -275,10 +421,10 @@ export default function Items() {
                     ) : null;
                   })()}
                 </div>
-                <span className="item-price">{formatCurrency(item.price)}</span>
+                <span className="item-price" style={{ fontWeight: 700 }}>{formatCurrency(item.price)}</span>
               </div>
               {item.description && (
-                <p className="item-description" style={{ marginBottom: '16px' }}>{item.description}</p>
+                <p className="item-description" style={{ marginBottom: '16px', fontSize: '0.85rem' }}>{item.description}</p>
               )}
               {/* Mobile Actions */}
               <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
@@ -418,14 +564,18 @@ export default function Items() {
   );
 }
 
-function EmptyState({ onAdd }) {
+function EmptyState({ onAdd, hasFilters }) {
   return (
-    <div className="empty-state">
-      <div className="empty-icon">🔧</div>
-      <p className="empty-text">No hay servicios todavía</p>
-      <Button variant="primary" onClick={onAdd}>
-        Agregar primer servicio
-      </Button>
+    <div className="empty-state" style={{ padding: '40px 20px', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-lg)', background: 'var(--bg-card)', textAlign: 'center', width: '100%' }}>
+      <div className="empty-icon" style={{ fontSize: '2.5rem', marginBottom: '16px' }}>🔧</div>
+      <p className="empty-text" style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '20px', fontWeight: 600 }}>
+        {hasFilters ? 'No se encontraron servicios asignados o que coincidan con la búsqueda.' : 'No hay servicios todavía registrado.'}
+      </p>
+      {!hasFilters && (
+        <Button variant="primary" onClick={onAdd}>
+          Agregar primer servicio
+        </Button>
+      )}
     </div>
   );
 }
