@@ -58,13 +58,13 @@ class PrismaUserRepository extends UserRepository {
     if (query) {
       const q = query.trim().toLowerCase();
       whereClause.OR = [
-        { name: { contains: q } },
-        { city: { contains: q } },
-        { locality: { contains: q } },
+        { name: { contains: q, mode: 'insensitive' } },
+        { city: { contains: q, mode: 'insensitive' } },
+        { locality: { contains: q, mode: 'insensitive' } },
         {
           professions: {
             some: {
-              name: { contains: q }
+              name: { contains: q, mode: 'insensitive' }
             }
           }
         }

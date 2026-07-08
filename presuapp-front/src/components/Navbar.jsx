@@ -18,7 +18,6 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
   };
 
   const closeMenu = () => setMenuOpen(false);
