@@ -18,9 +18,9 @@ export default function AdminRoute({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Si es un usuario normal (no ADMIN), lo redirige al Dashboard común
+  // Si es un usuario normal (no ADMIN), lo redirige a la sección no autorizado
   if (user && user.role !== 'ADMIN') {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return children;

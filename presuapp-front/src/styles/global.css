@@ -433,10 +433,11 @@ input, textarea, select {
 }
 
 .page-title {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .page-subtitle {
@@ -447,15 +448,17 @@ input, textarea, select {
 
 /* ─── Cards ─────────────────────────────────────────── */
 .card {
-  background: var(--bg-card);
+  background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 20px;
-  transition: all var(--transition);
+  padding: 24px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card:hover {
-  border-color: var(--border-hover);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.35);
 }
 
 /* ─── Buttons ───────────────────────────────────────── */
@@ -720,10 +723,11 @@ input, textarea, select {
 
 /* ─── Tables ────────────────────────────────────────── */
 .table-wrapper {
-  background: var(--bg-card);
+  background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.15);
 }
 
 .data-table {
@@ -732,8 +736,8 @@ input, textarea, select {
 }
 
 .data-table th {
-  background: rgba(255, 255, 255, 0.03);
-  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.015);
+  padding: 16px 20px;
   text-align: left;
   font-size: 0.78rem;
   font-weight: 600;
@@ -744,7 +748,7 @@ input, textarea, select {
 }
 
 .data-table td {
-  padding: 14px 16px;
+  padding: 16px 20px;
   font-size: 0.9rem;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-color);
@@ -754,11 +758,11 @@ input, textarea, select {
 .data-table tbody tr:last-child td { border-bottom: none; }
 
 .data-table tbody tr {
-  transition: background var(--transition);
+  transition: background 0.2s ease;
 }
 
 .data-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.012);
 }
 
 .data-table tfoot tr { background: rgba(255, 255, 255, 0.03); }

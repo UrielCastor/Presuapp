@@ -28,6 +28,19 @@ const errorHandler = (err, req, res, next) => {
     error.statusCode = 400;
   }
 
+  // Handle unauthorized use-case errors
+  const lowerMsg = (err.message || '').toLowerCase();
+  if (lowerMsg.includes('unauthorized') || lowerMsg.includes('unathorized')) {
+    error = new Error('Acceso denegado. No tenés permisos para interactuar con este recurso.');
+    error.statusCode = 403;
+  }
+
+  // Handle not found resources
+  if (lowerMsg.includes('not found') || lowerMsg.includes('missing')) {
+    error = new Error('El recurso solicitado no fue encontrado.');
+    error.statusCode = 404;
+  }
+
   res.status(error.statusCode || 500).json(
     formatResponse(false, null, error.message || 'Server Error', error.message)
   );

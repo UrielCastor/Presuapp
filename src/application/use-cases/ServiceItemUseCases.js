@@ -34,7 +34,7 @@ class ServiceItemUseCases {
     const item = await this.serviceItemRepository.findById(id);
     if (!item) throw new Error('Item not found');
     const prof = await this.professionRepository.findById(item.professionId);
-    if (prof.userId !== userId) throw new Error('Unauthorized');
+    if (!prof || prof.userId !== userId) throw new Error('Unauthorized');
     
     return this.serviceItemRepository.update(id, data);
   }
@@ -43,7 +43,7 @@ class ServiceItemUseCases {
     const item = await this.serviceItemRepository.findById(id);
     if (!item) throw new Error('Item not found');
     const prof = await this.professionRepository.findById(item.professionId);
-    if (prof.userId !== userId) throw new Error('Unauthorized');
+    if (!prof || prof.userId !== userId) throw new Error('Unauthorized');
     
     return this.serviceItemRepository.delete(id);
   }

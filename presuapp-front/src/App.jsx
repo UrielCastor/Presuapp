@@ -15,6 +15,7 @@ import Profile from './pages/Profile';
 import Index from './pages/Index';
 import AdminRoute from './components/AdminRoute';
 import AdminDashboard from './pages/AdminDashboard';
+import Unauthorized from './pages/Unauthorized';
 
 function AppLayout() {
   return (
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="/budgets" element={<Budgets />} />
             <Route path="/budgets/:id" element={<BudgetDetail />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
             <Route 
               path="/admin" 
               element={

@@ -21,7 +21,7 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: handle 401 globally
+// Response interceptor: handle 401 and 403 globally
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -29,6 +29,9 @@ axiosInstance.interceptors.response.use(
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
+    }
+    if (error.response?.status === 403) {
+      window.location.href = '/unauthorized';
     }
     return Promise.reject(error);
   }

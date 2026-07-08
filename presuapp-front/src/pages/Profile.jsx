@@ -13,7 +13,6 @@ export default function Profile() {
   const [loadingPay, setLoadingPay] = useState(false);
   const [errorPay, setErrorPay] = useState('');
   
-  // Refresh the profile data on mount to see changes immediately (e.g. from redirect)
   useEffect(() => {
     refreshProfile();
   }, [refreshProfile]);
@@ -61,158 +60,246 @@ export default function Profile() {
     });
   };
 
-  return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1 className="page-title">Mi Perfil</h1>
-      </div>
+  const initialLetter = (user?.name || user?.email || 'P')[0].toUpperCase();
 
+  return (
+    <div className="page-container" style={{ maxWidth: '960px', margin: '0 auto' }}>
+      
+      {/* 1. ALERTS */}
       {paymentStatus === 'success' && (
-        <div className="alert alert-success" style={{ marginBottom: '20px' }}>
+        <div className="alert alert-success" style={{ marginBottom: '24px', borderRadius: '12px' }}>
           <span className="alert-icon">🎉</span>
           <div>
-            <strong>¡Pago aprobado con éxito!</strong> Tu cuenta ahora forma parte del plan <strong>VIP</strong>. Disfrutá de acceso ilimitado a todas las herramientas.
+            <strong>¡Suscripción VIP Activada!</strong> Ahora tenés acceso ilimitado a clientes, presupuestos y catálogos.
           </div>
         </div>
       )}
 
       {paymentStatus === 'failure' && (
-        <div className="alert alert-error" style={{ marginBottom: '20px' }}>
+        <div className="alert alert-error" style={{ marginBottom: '24px', borderRadius: '12px' }}>
           <span className="alert-icon">⚠️</span>
           <div>
-            <strong>Pago rechazado.</strong> No pudimos procesar tu suscripción. Tu cuenta se mantiene en plan <strong>FREE</strong>.
+            <strong>Pago cancelado/rechazado.</strong> Seguís con tu plan gratuito actual.
           </div>
         </div>
       )}
 
       {errorPay && (
-        <div className="alert alert-error" style={{ marginBottom: '20px' }}>
+        <div className="alert alert-error" style={{ marginBottom: '24px', borderRadius: '12px' }}>
           <span className="alert-icon">⚠️</span>
           {errorPay}
         </div>
       )}
 
-      <div className="profile-grid">
-        <Card className="profile-card">
-          <div className="profile-avatar">
-            {(user?.name || user?.email || 'U')[0].toUpperCase()}
-          </div>
-          <h2 className="profile-name">{user?.name || 'Sin nombre'}</h2>
-          <p className="profile-email">{user?.email}</p>
-          {user?.profession && (
-            <span className="badge badge-info">{user.profession}</span>
-          )}
-        </Card>
+      {/* 2. UNIFIED PREMIUM HEADER */}
+      <div 
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '24px',
+          padding: '28px',
+          background: 'var(--bg-surface)',
+          borderRadius: '16px',
+          border: '1px solid var(--border-color)',
+          marginBottom: '24px',
+          flexWrap: 'wrap'
+        }}
+      >
+        <div 
+          style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '14px',
+            background: 'rgba(59, 130, 246, 0.1)',
+            color: '#3b82f6',
+            fontSize: '1.8rem',
+            fontWeight: 800,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '2px solid rgba(59, 130, 246, 0.2)'
+          }}
+        >
+          {initialLetter}
+        </div>
+        <div style={{ flex: 1, minWidth: '200px' }}>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+            {user?.name || 'Profesional'}
+          </h1>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>
+            {user?.email}
+          </span>
+        </div>
+        <div 
+          style={{ 
+            padding: '6px 14px', 
+            borderRadius: '8px', 
+            fontSize: '0.78rem', 
+            fontWeight: 750,
+            background: user?.userType === 'VIP' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(156, 163, 175, 0.08)',
+            color: user?.userType === 'VIP' ? '#f59e0b' : 'var(--text-secondary)',
+            border: `1px solid ${user?.userType === 'VIP' ? 'rgba(245, 158, 11, 0.2)' : 'var(--border-color)'}`
+          }}
+        >
+          {user?.userType === 'VIP' ? '🏆 CLIENTE VIP' : 'PLAN FREE'}
+        </div>
+      </div>
 
-        <Card className="detail-card">
-          <h2 className="detail-card-title">📋 Información de cuenta</h2>
-          <div className="detail-info">
-            {user?.name && (
-              <div className="detail-row-field">
-                <span className="field-label">Nombre</span>
-                <span className="field-value">{user.name}</span>
-              </div>
-            )}
-            {user?.username && (
-              <div className="detail-row-field">
-                <span className="field-label">Nombre de usuario</span>
-                <span className="field-value" style={{ fontFamily: 'monospace', color: 'var(--brand-primary)', fontWeight: 'bold' }}>
-                  @{user.username}
-                </span>
-              </div>
-            )}
-            <div className="detail-row-field">
-              <span className="field-label">Email</span>
-              <span className="field-value">{user?.email}</span>
-            </div>
-            <div className="detail-row-field">
-              <span className="field-label">Residencia</span>
-              <span className="field-value">
+      {/* 3. SYMMETRICAL TWIN DETAILS LIST */}
+      <div 
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+          gap: '24px'
+        }}
+      >
+        {/* LEFT CARD: ACCOUNT DETAIL */}
+        <Card style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-surface)' }}>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            ⚙️ Detalles de la Cuenta
+          </h3>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>📍 Ubicación</span>
+              <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>
                 {user?.city || user?.locality ? (
                   `${user.city || '—'}, ${user.locality || '—'}`
                 ) : (
-                  <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin especificar</span>
+                  'No especificada'
                 )}
+              </strong>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>🏷️ Nombre de Usuario</span>
+              <strong style={{ fontSize: '0.88rem', color: 'var(--brand-primary)', fontFamily: 'monospace' }}>
+                {user?.username ? `@${user.username}` : '—'}
+              </strong>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>🔑 Rol Asignado</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
+                {user?.role || 'PROFESIONAL'}
               </span>
             </div>
-            <div className="detail-row-field">
-              <span className="field-label">Tipo de cuenta</span>
-              <span className={`badge ${user?.userType === 'VIP' ? 'badge-warning' : 'badge-default'}`}>
-                {user?.userType || 'FREE'}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>🆔 ID de Usuario</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                #{user?.id || '—'}
               </span>
             </div>
-            {user?.id && (
-              <div className="detail-row-field">
-                <span className="field-label">ID de usuario</span>
-                <span className="field-value">#{user.id}</span>
-              </div>
-            )}
           </div>
         </Card>
 
-        <Card className="detail-card" style={{ gridColumn: '1 / -1' }}>
-          <h2 className="detail-card-title">💳 Mi Plan (Membresía)</h2>
-          <div className="detail-info">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '8px', marginBottom: '16px' }}>
-              <div style={{ background: 'var(--bg-app)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                <span className="field-label" style={{ display: 'block', marginBottom: '4px' }}>Plan Actual</span>
-                <strong style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>
-                  {user?.userType === 'VIP' ? 'Platinum VIP ⭐' : 'Plan Básico (FREE)'}
-                </strong>
-              </div>
-              <div style={{ background: 'var(--bg-app)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                <span className="field-label" style={{ display: 'block', marginBottom: '4px' }}>Estado</span>
-                <span className={`badge ${user?.userType === 'VIP' ? 'badge-success' : 'badge-default'}`}>
-                  {user?.userType === 'VIP' ? 'Activo' : 'Libre'}
-                </span>
-              </div>
-              <div style={{ background: 'var(--bg-app)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                <span className="field-label" style={{ display: 'block', marginBottom: '4px' }}>Inicio de Membresía</span>
-                <span className="field-value" style={{ color: 'var(--text-secondary)' }}>
-                  {user?.membership?.startDate ? formatDate(user.membership.startDate) : '—'}
-                </span>
-              </div>
-              <div style={{ background: 'var(--bg-app)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                <span className="field-label" style={{ display: 'block', marginBottom: '4px' }}>Vencimiento</span>
-                <span className="field-value" style={{ color: 'var(--text-secondary)' }}>
-                  {user?.userType === 'VIP' && user?.membership?.endDate 
-                    ? formatDate(user.membership.endDate) 
-                    : 'Sin límite (Plan gratuito)'}
-                </span>
-              </div>
+        {/* RIGHT CARD: MEMBERSHIP DETAIL */}
+        <Card style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-surface)' }}>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            💳 Membresía y Estado
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>📅 Alta del Servicio</span>
+              <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                {user?.membership?.startDate ? formatDate(user.membership.startDate) : formatDate(Date.now())}
+              </strong>
             </div>
 
-            {user?.userType !== 'VIP' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '24px', padding: '24px 16px', background: 'rgba(99, 102, 241, 0.04)', border: '1px dashed rgba(99, 102, 241, 0.3)', borderRadius: '12px', textAlign: 'center' }}>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: '750', marginBottom: '8px' }}>⚡ Actualizate a VIP y eliminá todos los límites</h3>
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', maxWidth: '500px', marginBottom: '20px' }}>
-                  El plan FREE limita tus profesiones, clientes, servicios y presupuestos. Actualizate a VIP por solo <strong>$10.000 / mes</strong> para obtener acceso corporativo y sin límites de almacenamiento.
-                </p>
-                <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
-                  <Button 
-                    onClick={handleUpgrade} 
-                    disabled={loadingPay} 
-                    variant="primary" 
-                    style={{ padding: '12px 32px', fontSize: '1.02rem', fontWeight: 'bold', minWidth: '260px' }}
-                  >
-                    {loadingPay ? 'Creando preferencia...' : 'Actualizar a VIP — $10.000 / mes'}
-                  </Button>
-                  <Button 
-                    onClick={handleSimulateSuccess} 
-                    disabled={loadingPay} 
-                    variant="secondary" 
-                    style={{ padding: '12px 20px', fontSize: '0.95rem' }}
-                  >
-                    🧪 Simular Pago Aprobado
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--brand-success)', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.15)', padding: '14px', borderRadius: '8px' }}>
-                ✨ <strong>¡Felicidades!</strong> Estás disfrutando del Plan VIP. Tus cuotas para registrar profesiones, clientes, presupuestos y servicios del catálogo son ahora de acceso libre e ilimitado.
-              </div>
-            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>⏳ Vencimiento del Plan</span>
+              <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                {user?.userType === 'VIP' && user?.membership?.endDate 
+                  ? formatDate(user.membership.endDate) 
+                  : 'Sin límite (Plan gratuito)'}
+              </strong>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>📈 Estado</span>
+              <span 
+                style={{ 
+                  fontSize: '0.74rem', 
+                  fontWeight: 700, 
+                  color: user?.userType === 'VIP' ? '#10b981' : 'var(--text-muted)',
+                  textTransform: 'uppercase'
+                }}
+              >
+                {user?.userType === 'VIP' ? 'Activo' : 'FREE'}
+              </span>
+            </div>
           </div>
+
+          {/* CTA Box based on user plan */}
+          {user?.userType !== 'VIP' ? (
+            <div 
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                padding: '16px',
+                borderRadius: '12px',
+                background: 'var(--bg-app)',
+                border: '1px solid var(--border-color)',
+                marginTop: '10px'
+              }}
+            >
+              <div style={{ textAlign: 'left' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', display: 'block', marginBottom: '2px' }}>
+                  ⭐ Actualizate a Platinum VIP
+                </span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.4', display: 'block' }}>
+                  Eliminá límites de clientes, presupuestos y catálogos de rubros por $10.000 / mes.
+                </span>
+              </div>
+              
+              <Button 
+                onClick={handleUpgrade} 
+                disabled={loadingPay} 
+                variant="primary" 
+                style={{ width: '100%', padding: '10px', fontSize: '0.82rem', fontWeight: 700 }}
+              >
+                {loadingPay ? 'Iniciando...' : 'Obtener VIP — $10.000 / mes'}
+              </Button>
+              
+              <button 
+                onClick={handleSimulateSuccess} 
+                disabled={loadingPay} 
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'var(--text-muted)', 
+                  cursor: 'pointer', 
+                  fontSize: '0.72rem', 
+                  textDecoration: 'underline',
+                  textAlign: 'center',
+                  marginTop: '2px'
+                }}
+              >
+                Simular Pago Aprobado (Pruebas)
+              </button>
+            </div>
+          ) : (
+            <div 
+              style={{ 
+                padding: '12px 14px', 
+                background: 'rgba(16, 185, 129, 0.04)', 
+                border: '1px solid rgba(16, 185, 129, 0.12)', 
+                borderRadius: '12px', 
+                color: '#10b981', 
+                fontSize: '0.82rem', 
+                lineHeight: '1.4',
+                marginTop: '10px',
+                display: 'flex',
+                gap: '8px'
+              }}
+            >
+              <span>✨</span>
+              <span>¡Felicidades! Tenés acceso total e ilimitado a PresuApp por ser cliente Platinum VIP.</span>
+            </div>
+          )}
         </Card>
       </div>
     </div>
