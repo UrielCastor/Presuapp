@@ -86,15 +86,39 @@ class PrismaUserRepository extends UserRepository {
     return users.map(u => new User(u));
   }
 
-  async updateMembership(userId, membershipData) {
+  async checkAndUpdateMembershipExpiration(userId) {
+    const membership = await prisma.membership.findUnique({
+      where: { userId: parseInt(userId) }
+    });
+
+    if (membership && membership.status === 'ACTIVE' && new Date(membership.endDate) < new Date()) {
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: parseInt(userId) },
+          data: { userType: 'FREE' }
+        }),
+        prisma.membership.update({
+          where: { userId: parseInt(userId) },
+          data: { status: 'INACTIVE' }
+        })
+      ]);
+      return true;
+    }
+    return false;
+  }
+
+  async updateMembership(userId, membershipData, paymentTransactionData = null) {
     const { startDate, endDate, status, planType } = membershipData;
     
-    await prisma.$transaction([
-      prisma.user.update({
+    await prisma.$transaction(async (tx) => {
+      // 1. Actualizar tipo de usuario
+      await tx.user.update({
         where: { id: parseInt(userId) },
         data: { userType: planType }
-      }),
-      prisma.membership.upsert({
+      });
+
+      // 2. Crear o actualizar membresía
+      const membership = await tx.membership.upsert({
         where: { userId: parseInt(userId) },
         update: {
           startDate,
@@ -111,8 +135,24 @@ class PrismaUserRepository extends UserRepository {
           planType,
           autoRenew: true
         }
-      })
-    ]);
+      });
+
+      // 3. Registrar transacción si existe
+      if (paymentTransactionData) {
+        const existingTx = await tx.paymentTransaction.findUnique({
+          where: { mercadoPagoPaymentId: paymentTransactionData.mercadoPagoPaymentId }
+        });
+        if (!existingTx) {
+          await tx.paymentTransaction.create({
+            data: {
+              ...paymentTransactionData,
+              userId: parseInt(userId),
+              membershipId: membership.id
+            }
+          });
+        }
+      }
+    });
   }
 }
 module.exports = PrismaUserRepository;

@@ -26,6 +26,7 @@ model User {
   clients     Client[]
   budgets     Budget[]
   membership  Membership?
+  paymentTransactions PaymentTransaction[]
 }
 
 model Profession {
@@ -105,4 +106,24 @@ model Membership {
   updatedAt DateTime @updatedAt
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PaymentTransaction {
+  id                      Int      @id @default(autoincrement())
+  userId                  Int
+  membershipId            Int?
+  mercadoPagoPaymentId    String   @unique
+  mercadoPagoPreferenceId String?
+  externalReference       String?
+  amount                  Float
+  currency                String
+  paymentMethod           String?
+  paymentType             String?
+  status                  String
+  approvedAt              DateTime?
+  rawResponse             Json?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

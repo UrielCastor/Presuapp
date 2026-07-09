@@ -32,6 +32,18 @@ export default function AdminDashboard() {
   const [actionUser, setActionUser] = useState(null); // Usuario al que se aplica el cambio
   const [confirmAction, setConfirmAction] = useState({ type: '', value: '', show: false }); // {type: 'plan'|'status', value: string, show: boolean}
   
+  // Memberships states
+  const [memberships, setMemberships] = useState([]);
+  const [membershipsLoading, setMembershipsLoading] = useState(true);
+  const [membershipsError, setMembershipsError] = useState('');
+  const [memPagination, setMemPagination] = useState({ total: 0, page: 1, limit: 50, totalPages: 1 });
+  const [memFilters, setMemFilters] = useState({ name: '', email: '', filterType: '' });
+  const [selectedMembership, setSelectedMembership] = useState(null);
+  const [showMemDetailModal, setShowMemDetailModal] = useState(false);
+  const [showExtendModal, setShowExtendModal] = useState(false);
+  const [extendDays, setExtendDays] = useState('30');
+  const [confirmMemAction, setConfirmMemAction] = useState({ type: '', targetUserId: null, userName: '', show: false }); // activate | deactivate | extend
+
   const [actionSubmitting, setActionSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
 
@@ -75,11 +87,39 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchMemberships = async () => {
+    setMembershipsLoading(true);
+    setMembershipsError('');
+    try {
+      const params = {
+        page,
+        name: memFilters.name || undefined,
+        email: memFilters.email || undefined,
+        filterType: memFilters.filterType || undefined,
+      };
+      const res = await axiosInstance.get('/admin/memberships', { params });
+      setMemberships(res.data.data.memberships);
+      setMemPagination({
+        total: res.data.data.pagination.total,
+        page: res.data.data.pagination.page,
+        limit: res.data.data.pagination.limit,
+        totalPages: Math.ceil(res.data.data.pagination.total / res.data.data.pagination.limit) || 1
+      });
+    } catch (err) {
+      console.error(err);
+      setMembershipsError('Error al listar las membresías.');
+    } finally {
+      setMembershipsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'dashboard') {
       fetchStats();
-    } else {
+    } else if (activeTab === 'users') {
       fetchUsers();
+    } else if (activeTab === 'memberships') {
+      fetchMemberships();
     }
   }, [activeTab, page]);
 
@@ -87,6 +127,63 @@ export default function AdminDashboard() {
     e.preventDefault();
     setPage(1);
     fetchUsers();
+  };
+
+  const handleApplyMemFilters = (e) => {
+    e.preventDefault();
+    setPage(1);
+    fetchMemberships();
+  };
+
+  const handleClearMemFilters = () => {
+    setMemFilters({ name: '', email: '', filterType: '' });
+    setPage(1);
+    setTimeout(fetchMemberships, 50);
+  };
+
+  const handleViewMembership = async (userId) => {
+    try {
+      const res = await axiosInstance.get(`/admin/memberships/${userId}`);
+      setSelectedMembership(res.data.data);
+      setShowMemDetailModal(true);
+    } catch (err) {
+      alert('Error al cargar la información detallada de la membresía.');
+    }
+  };
+
+  const triggerMemAction = (type, targetUserId, userName) => {
+    setConfirmMemAction({
+      type,
+      targetUserId,
+      userName,
+      show: true
+    });
+  };
+
+  const handleConfirmMemActionSubmit = async () => {
+    setActionSubmitting(true);
+    setActionError('');
+    try {
+      const { type, targetUserId } = confirmMemAction;
+      if (type === 'activate') {
+        await axiosInstance.post('/admin/memberships/activate', { userId: targetUserId });
+      } else if (type === 'deactivate') {
+        await axiosInstance.post('/admin/memberships/deactivate', { userId: targetUserId });
+      } else if (type === 'extend') {
+        await axiosInstance.post('/admin/memberships/extend', { userId: targetUserId, days: parseInt(extendDays) });
+      }
+      
+      setConfirmMemAction({ type: '', targetUserId: null, userName: '', show: false });
+      setShowExtendModal(false);
+      
+      fetchMemberships();
+      fetchStats();
+    } catch (err) {
+      console.error(err);
+      setActionError(err.response?.data?.message || 'Error al procesar la acción sobre la membresía.');
+    } finally {
+      setActionSubmitting(false);
+    }
   };
 
   const handleClearFilters = () => {
@@ -224,6 +321,23 @@ export default function AdminDashboard() {
         >
           👥 Gestión de Usuarios
         </button>
+        <button
+          onClick={() => { setActiveTab('memberships'); setPage(1); }}
+          className={`tab-btn ${activeTab === 'memberships' ? 'active' : ''}`}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: activeTab === 'memberships' ? 'var(--brand-primary)' : 'var(--text-secondary)',
+            fontWeight: 'bold',
+            padding: '12px 20px',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            borderBottom: activeTab === 'memberships' ? '3px solid var(--brand-primary)' : '3px solid transparent',
+            transition: 'all var(--transition)'
+          }}
+        >
+          💳 Membresías & Pagos
+        </button>
       </div>
 
       {/* RENDER TAB 1: METRICAS */}
@@ -324,8 +438,8 @@ export default function AdminDashboard() {
               {/* Sección Gráficos Nativos */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '40px' }}>
                 
-                {/* Grafico 1: Crecimiento de Registros e Ingresos */}
-                <Card>
+                {/* Grafico 1: Crecimiento de Registros e Ingresos (oculto) */}
+                {false && <Card>
                   <h3 style={{ fontSize: '1rem', fontWeight: '750', marginBottom: '20px' }}>📈 Evolución Trimestral de Registros</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '10px 0' }}>
                     {stats.graphs.monthlyData.map(item => (
@@ -354,10 +468,10 @@ export default function AdminDashboard() {
                     <span>Regs. Máximos: 50 usuarios</span>
                     <span>Ancho relativo al máximo</span>
                   </div>
-                </Card>
+                </Card>}
 
-                {/* Grafico 2: Rubros Profesionales más utilizados */}
-                <Card>
+                {/* Grafico 2: Rubros Profesionales más utilizados (oculto) */}
+                {false && <Card>
                   <h3 style={{ fontSize: '1rem', fontWeight: '750', marginBottom: '20px' }}>🏆 Rubros Profesionales más Registrados</h3>
                   {stats.graphs.professions.length === 0 ? (
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic', textAlign: 'center', padding: '40px' }}>
@@ -384,7 +498,7 @@ export default function AdminDashboard() {
                       ))}
                     </div>
                   )}
-                </Card>
+                </Card>}
 
                 {/* Grafico 3: Ciudades Populares */}
                 <Card style={{ gridColumn: '1 / -1' }}>
@@ -520,106 +634,73 @@ export default function AdminDashboard() {
           ) : (
             <div>
               {/* Contenedor responsivo tabla */}
-              <div style={{ overflowX: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '850px' }}>
+              <div style={{ overflowX: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
                   <thead>
                     <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)' }}>
-                      <th style={{ padding: '16px' }}>Nombre</th>
-                      <th style={{ padding: '16px' }}>Usuario</th>
-                      <th style={{ padding: '16px' }}>Email</th>
-                      <th style={{ padding: '16px' }}>Ciudad / Rubros</th>
-                      <th style={{ padding: '16px' }}>Plan</th>
-                      <th style={{ padding: '16px' }}>Estado</th>
-                      <th style={{ padding: '16px', textAlign: 'right' }}>Acciones</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Nombre</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Email</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Tipo</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Estado</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Registro</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', textAlign: 'right' }}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map(u => (
-                      <tr key={u.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background var(--transition)' }}>
-                        <td style={{ padding: '14px 16px', fontWeight: 'bold', color: '#fff' }}>{u.name}</td>
-                        <td style={{ padding: '14px 16px', color: 'var(--brand-primary-light)' }}>@{u.username}</td>
-                        <td style={{ padding: '14px 16px', fontSize: '0.85rem' }}>{u.email}</td>
-                        <td style={{ padding: '14px 16px', fontSize: '0.82rem' }}>
-                          <span style={{ display: 'block', color: 'var(--text-secondary)' }}>📍 {u.city || '—'}</span>
-                          <span style={{ display: 'block', fontStyle: 'italic', color: 'var(--text-muted)' }}>
-                            {u.professions.join(', ') || '(Ninguna)'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 16px' }}>
-                          <span className={`badge ${u.userType === 'VIP' ? 'badge-warning' : 'badge-default'}`} style={{ display: 'block', marginBottom: '4px', textAlign: 'center' }}>
+                      <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background var(--transition)' }}>
+                        <td style={{ padding: '8px 12px', fontWeight: 600, color: '#fff', fontSize: '0.82rem' }}>{u.name}</td>
+                        <td style={{ padding: '8px 12px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{u.email}</td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <span className={`badge ${u.userType === 'VIP' ? 'badge-warning' : 'badge-default'}`} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
                             {u.userType}
                           </span>
-                          <span className={`badge`} style={{ display: 'block', fontSize: '0.67rem', textAlign: 'center', background: u.role === 'ADMIN' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.03)', color: u.role === 'ADMIN' ? 'var(--brand-primary-light)' : 'var(--text-muted)', border: u.role === 'ADMIN' ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid var(--border-color)' }}>
-                            {u.role}
+                        </td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <span className={`badge ${u.status === 'ACTIVE' ? 'badge-success' : u.status === 'SUSPENDED' ? 'badge-danger' : 'badge-default'}`} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                            {u.status === 'ACTIVE' ? '🟢 Activo' : u.status === 'SUSPENDED' ? '🔴 Suspendido' : '⚪ Inactivo'}
                           </span>
                         </td>
-                        <td style={{ padding: '14px 16px' }}>
-                          <span className={`badge ${u.status === 'ACTIVE' ? 'badge-success' : u.status === 'SUSPENDED' ? 'badge-danger' : 'badge-default'}`}>
-                            {u.status === 'ACTIVE' ? 'Activo' : u.status === 'SUSPENDED' ? 'Suspendido' : 'Inactivo'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap', maxWidth: '320px' }}>
-                            <Button 
+                        <td style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatDate(u.createdAt)}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                            <button
                               onClick={() => { setSelectedUser(u); setShowDetailModal(true); }}
-                              variant="ghost" 
-                              style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                              style={{ padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '5px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}
                             >
                               🔍 Ver
-                            </Button>
-                            
-                            {u.userType === 'VIP' ? (
-                              <Button 
-                                onClick={() => triggerPlanChange(u, 'FREE')}
-                                variant="secondary" 
-                                style={{ padding: '6px 10px', fontSize: '0.78rem' }}
-                              >
-                                ↓ FREE
-                              </Button>
-                            ) : (
-                              <Button 
-                                onClick={() => triggerPlanChange(u, 'VIP')}
-                                variant="primary" 
-                                style={{ padding: '6px 10px', fontSize: '0.78rem', background: '#d97706', borderColor: '#d97706', color: '#000' }}
-                              >
-                                ↑ VIP
-                              </Button>
-                            )}
+                            </button>
 
                             {u.role === 'ADMIN' ? (
-                              <Button 
+                              <button
                                 onClick={() => triggerRoleChange(u, 'USER')}
-                                variant="secondary" 
-                                style={{ padding: '6px 10px', fontSize: '0.78rem', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                                style={{ padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '5px', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'transparent', color: '#f87171', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}
                               >
-                                🎖️ Quitar ADMIN
-                              </Button>
+                                🛡️ Quitar Admin
+                              </button>
                             ) : (
-                              <Button 
+                              <button
                                 onClick={() => triggerRoleChange(u, 'ADMIN')}
-                                variant="primary" 
-                                style={{ padding: '6px 10px', fontSize: '0.78rem', background: 'var(--brand-primary)', borderColor: 'var(--brand-primary)', color: '#fff' }}
+                                style={{ padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '5px', border: '1px solid rgba(99, 102, 241, 0.25)', background: 'transparent', color: 'var(--brand-primary-light)', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}
                               >
-                                👑 Hacer ADMIN
-                              </Button>
+                                🛡️ Hacer Admin
+                              </button>
                             )}
 
                             {u.status === 'ACTIVE' ? (
-                              <Button 
+                              <button
                                 onClick={() => triggerStatusChange(u, 'SUSPENDED')}
-                                variant="danger" 
-                                style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                                style={{ padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '5px', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'transparent', color: '#f87171', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}
                               >
-                                🚫 Suspender
-                              </Button>
+                                ⛔ Suspender
+                              </button>
                             ) : (
-                              <Button 
+                              <button
                                 onClick={() => triggerStatusChange(u, 'ACTIVE')}
-                                variant="success" 
-                                style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                                style={{ padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '5px', border: '1px solid rgba(16, 185, 129, 0.2)', background: 'transparent', color: '#34d399', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}
                               >
-                                ✅ Reactivar
-                              </Button>
+                                ✅ Activar
+                              </button>
                             )}
                           </div>
                         </td>
@@ -655,6 +736,345 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* RENDER TAB 3: GESTION MEMBRESÍAS */}
+      {activeTab === 'memberships' && (
+        <div>
+          {/* Panel Filtros de Membresía */}
+          <Card style={{ marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: '750', marginBottom: '16px' }}>🔍 Filtros de Membresías</h3>
+            <form onSubmit={handleApplyMemFilters} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+              <div>
+                <label className="field-label" style={{ display: 'block', marginBottom: '4px' }}>Nombre</label>
+                <input 
+                  type="text" 
+                  value={memFilters.name} 
+                  onChange={e => setMemFilters(prev => ({ ...prev, name: e.target.value }))} 
+                  placeholder="Ej: Juan Pérez"
+                  className="main-search-input"
+                  style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', width: '100%', padding: '10px', borderRadius: '6px', color: '#fff' }}
+                />
+              </div>
+
+              <div>
+                <label className="field-label" style={{ display: 'block', marginBottom: '4px' }}>Email</label>
+                <input 
+                  type="text" 
+                  value={memFilters.email} 
+                  onChange={e => setMemFilters(prev => ({ ...prev, email: e.target.value }))} 
+                  placeholder="Ej: test@email.com"
+                  className="main-search-input"
+                  style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', width: '100%', padding: '10px', borderRadius: '6px', color: '#fff' }}
+                />
+              </div>
+
+              <div>
+                <label className="field-label" style={{ display: 'block', marginBottom: '4px' }}>Estado de Plan</label>
+                <select 
+                  value={memFilters.filterType} 
+                  onChange={e => setMemFilters(prev => ({ ...prev, filterType: e.target.value }))}
+                  style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', width: '100%', padding: '10px', borderRadius: '6px', color: '#fff', outline: 'none' }}
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="ACTIVE">VIP activos 🟢</option>
+                  <option value="EXPIRED">VIP vencidos 🔴</option>
+                  <option value="FREE">Plan FREE 🟡</option>
+                  <option value="EXPIRING">Próximos vencimientos (7 días)</option>
+                </select>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <Button type="button" onClick={handleClearMemFilters} variant="secondary">Limpiar filtros</Button>
+                <Button type="submit" variant="primary">Aplicar filtros</Button>
+              </div>
+            </form>
+          </Card>
+
+          {/* Tabla / Lista de membresías */}
+          {membershipsLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
+              <div className="spinner"></div>
+            </div>
+          ) : membershipsError ? (
+            <div className="alert alert-error">{membershipsError}</div>
+          ) : memberships.length === 0 ? (
+            <div className="no-results-card">
+              <span className="no-results-icon">💳</span>
+              <h3>No se encontraron registros de membresías</h3>
+              <p>Revisa los filtros de búsqueda e intenta nuevamente.</p>
+            </div>
+          ) : (
+            <div>
+              <div style={{ overflowX: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '750px' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)' }}>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Usuario</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Email</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Plan</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Estado</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Vencimiento</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Días</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Último Pago</th>
+                      <th style={{ padding: '9px 12px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', textAlign: 'right' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {memberships.map(m => (
+                      <tr key={m.userId} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background var(--transition)' }}>
+                        <td style={{ padding: '8px 12px', fontWeight: 600, color: '#fff', fontSize: '0.82rem' }}>{m.userName}</td>
+                        <td style={{ padding: '8px 12px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{m.userEmail}</td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <span className={`badge ${m.planType === 'VIP' ? 'badge-warning' : 'badge-default'}`} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                            {m.planType}
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <span className={`badge ${m.status === 'ACTIVE' ? 'badge-success' : m.status === 'EXPIRED' ? 'badge-danger' : 'badge-default'}`} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                            {m.status === 'ACTIVE' ? '🟢 Activo' : m.status === 'EXPIRED' ? '🔴 Vencido' : '🟡 Pendiente'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{m.endDate ? formatDate(m.endDate) : '—'}</td>
+                        <td style={{ padding: '8px 12px', fontSize: '0.78rem', fontWeight: 600, color: m.daysRemaining <= 7 && m.status === 'ACTIVE' ? '#f87171' : 'var(--text-primary)' }}>
+                          {m.status === 'ACTIVE' ? `${m.daysRemaining}d` : '—'}
+                        </td>
+                        <td style={{ padding: '8px 12px', fontSize: '0.75rem' }}>
+                          {m.lastPaymentAmount ? (
+                            <span style={{ color: '#34d399', fontWeight: 600 }}>${m.lastPaymentAmount.toLocaleString('es-AR')}</span>
+                          ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                        </td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={() => handleViewMembership(m.userId)}
+                              style={{ padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '5px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}
+                            >
+                              🔍 Detalle
+                            </button>
+                            {m.planType === 'VIP' ? (
+                              <>
+                                <button
+                                  onClick={() => { setExtendDays('30'); triggerMemAction('extend', m.userId, m.userName); }}
+                                  style={{ padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '5px', border: '1px solid rgba(99, 102, 241, 0.25)', background: 'transparent', color: 'var(--brand-primary-light)', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}
+                                >
+                                  📆 Extender
+                                </button>
+                                <button
+                                  onClick={() => triggerMemAction('deactivate', m.userId, m.userName)}
+                                  style={{ padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '5px', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'transparent', color: '#f87171', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}
+                                >
+                                  ↓ FREE
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => triggerMemAction('activate', m.userId, m.userName)}
+                                style={{ padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '5px', border: '1px solid rgba(16, 185, 129, 0.2)', background: 'transparent', color: '#34d399', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}
+                              >
+                                ↑ Activar VIP
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Botones de Paginacion */}
+              {memPagination.totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Mostrando página <b>{memPagination.page}</b> de <b>{memPagination.totalPages}</b> ({memPagination.total} membresías totales)
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button 
+                      disabled={page === 1} 
+                      onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                      variant="secondary"
+                    >
+                      Anterior
+                    </Button>
+                    <Button 
+                      disabled={page === memPagination.totalPages} 
+                      onClick={() => setPage(prev => Math.min(memPagination.totalPages, prev + 1))}
+                      variant="secondary"
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL DETALLE DE MEMBRESÍA Y PAGOS */}
+      {showMemDetailModal && selectedMembership && (
+        <div className="modal-overlay" onClick={() => setShowMemDetailModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '650px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">💳 Historial y Ficha de Membresía</h2>
+              <button className="modal-close" onClick={() => setShowMemDetailModal(false)}>✕</button>
+            </div>
+            
+            <div className="modal-body" style={{ color: 'var(--text-primary)' }}>
+              {/* Info de usuario */}
+              <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', margin: '0 0 4px' }}>{selectedMembership.user.name}</h3>
+                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                  📧 {selectedMembership.user.email} | 🛠️ Rubros: {selectedMembership.user.professions.join(', ') || '(Ninguno)'}
+                </p>
+              </div>
+
+              {/* Info de membresia */}
+              <div style={{ background: 'var(--bg-app)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
+                <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Estado actual del plan</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '16px' }}>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block' }}>Plan:</span>
+                    <strong style={{ fontSize: '0.95rem' }}>{selectedMembership.plan.planType}</strong>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block' }}>Estado:</span>
+                    <strong style={{ fontSize: '0.95rem' }}>
+                      {selectedMembership.plan.status === 'ACTIVE' ? 'Activo 🟢' : selectedMembership.plan.status === 'EXPIRED' ? 'Vencido 🔴' : 'FREE 🟡'}
+                    </strong>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block' }}>Inicio:</span>
+                    <span style={{ fontSize: '0.9rem' }}>{selectedMembership.plan.startDate ? formatDate(selectedMembership.plan.startDate) : '—'}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block' }}>Vencimiento:</span>
+                    <span style={{ fontSize: '0.9rem' }}>{selectedMembership.plan.endDate ? formatDate(selectedMembership.plan.endDate) : '—'}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block' }}>Días Restantes:</span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 'bold' }}>{selectedMembership.plan.daysRemaining} días</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Registro de pagos */}
+              <div>
+                <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Historial de Pagos (PaymentTransaction)</h4>
+                {selectedMembership.payments.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontStyle: 'italic', padding: '10px 0' }}>
+                    No se registran transacciones de pago para este profesional.
+                  </p>
+                ) : (
+                  <div style={{ overflowX: 'auto', maxHeight: '200px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)' }}>
+                          <th style={{ padding: '10px' }}>ID MP</th>
+                          <th style={{ padding: '10px' }}>Monto</th>
+                          <th style={{ padding: '10px' }}>Método</th>
+                          <th style={{ padding: '10px' }}>Fecha</th>
+                          <th style={{ padding: '10px' }}>Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedMembership.payments.map(p => (
+                          <tr key={p.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '8px 10px', color: 'var(--brand-primary-light)' }}>{p.mercadoPagoPaymentId}</td>
+                            <td style={{ padding: '8px 10px', fontWeight: 'bold' }}>${p.amount.toLocaleString('es-AR')}</td>
+                            <td style={{ padding: '8px 10px' }}>{p.paymentMethod || 'manual'}</td>
+                            <td style={{ padding: '8px 10px' }}>{formatDate(p.createdAt)}</td>
+                            <td style={{ padding: '8px 10px' }}>
+                              <span className={`badge ${p.status === 'approved' ? 'badge-success' : 'badge-default'}`} style={{ fontSize: '0.67rem', padding: '2px 6px' }}>
+                                {p.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ borderTop: '1px solid var(--border-color)', marginTop: '20px', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <Button onClick={() => setShowMemDetailModal(false)} variant="secondary">Cerrar</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRMATION ACTION MODAL FOR MEMBERSHIP */}
+      {confirmMemAction.show && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '450px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">⚠️ Confirmar Acción sobre Membresía</h2>
+            </div>
+            <div className="modal-body" style={{ color: 'var(--text-primary)' }}>
+              {confirmMemAction.type === 'activate' ? (
+                <p>
+                  ¿Estás seguro de que querés <strong>ACTIVAR</strong> manualmente el acceso VIP para <strong>{confirmMemAction.userName}</strong>?<br/>
+                  Esto le otorgará 30 días de membresía VIP con almacenamiento ilimitado a partir de hoy.
+                </p>
+              ) : confirmMemAction.type === 'deactivate' ? (
+                <p>
+                  ¿Estás seguro de que querés <strong>DESACTIVAR</strong> el plan VIP para <strong>{confirmMemAction.userName}</strong>?<br/>
+                  Su cuenta revertirá inmediatamente a plan FREE y se aplicarán los límites del sistema.
+                </p>
+              ) : confirmMemAction.type === 'extend' ? (
+                <div>
+                  <p>
+                    ¿Estás seguro de que querés <strong>EXTENDER</strong> la membresía VIP de <strong>{confirmMemAction.userName}</strong>?
+                  </p>
+                  <div style={{ marginTop: '12px' }}>
+                    <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>Elegir días a extender:</label>
+                    <select 
+                      value={extendDays} 
+                      onChange={e => setExtendDays(e.target.value)}
+                      style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', width: '100%', padding: '10px', borderRadius: '6px', color: '#fff', outline: 'none' }}
+                    >
+                      <option value="7">7 días</option>
+                      <option value="15">15 días</option>
+                      <option value="30">30 días (1 Mes)</option>
+                      <option value="90">90 días (3 Meses)</option>
+                      <option value="365">365 días (1 Año)</option>
+                    </select>
+                  </div>
+                </div>
+              ) : null}
+
+              {actionError && (
+                <div className="alert alert-error" style={{ marginTop: '14px' }}>
+                  {actionError}
+                </div>
+              )}
+            </div>
+            
+            <div className="modal-footer" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <Button 
+                onClick={() => { setConfirmMemAction({ type: '', targetUserId: null, userName: '', show: false }); setActionError(''); }}
+                disabled={actionSubmitting} 
+                variant="secondary"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleConfirmMemActionSubmit} 
+                disabled={actionSubmitting} 
+                variant="primary"
+                style={{
+                  background: confirmMemAction.type === 'deactivate' ? 'var(--brand-danger)' : 'var(--brand-primary)',
+                  borderColor: confirmMemAction.type === 'deactivate' ? 'var(--brand-danger)' : 'var(--brand-primary)'
+                }}
+              >
+                {actionSubmitting ? 'Procesando...' : 'Confirmar'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

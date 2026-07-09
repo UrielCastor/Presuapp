@@ -20,7 +20,10 @@ class AdminUseCases {
     const usersToday = await prisma.user.count({ where: { createdAt: { gte: startOfToday } } });
 
     // 2. Estadísticas de Membresías
-    const activeMemberships = await prisma.membership.count({ where: { status: 'ACTIVE', planType: 'VIP' } });
+    // 2. Estadísticas de Membresías
+    const activeMemberships = await prisma.membership.count({
+      where: { status: 'ACTIVE', endDate: { gte: now } }
+    });
     const expiredMemberships = await prisma.membership.count({
       where: {
         OR: [
@@ -42,12 +45,25 @@ class AdminUseCases {
     const renewals = await prisma.membership.count({ where: { autoRenew: true } });
     const cancellations = await prisma.membership.count({ where: { autoRenew: false } });
 
-    // 3. Estadísticas de Pagos (Calculadas en base a Mercado Pago y membresías VIP)
-    // El usuario VIP paga $10.000 mensual
-    const totalRevenue = vipUsers * 10000;
-    const approvedPaymentsCount = vipUsers;
-    const pendingPaymentsCount = 0;
-    const rejectedPaymentsCount = 0;
+    // 3. Estadísticas de Pagos Reales
+    const approvedTransactions = await prisma.paymentTransaction.findMany({
+      where: { status: 'approved' }
+    });
+    const pendingTransactions = await prisma.paymentTransaction.findMany({
+      where: { status: 'pending' }
+    });
+    const rejectedTransactions = await prisma.paymentTransaction.findMany({
+      where: { status: { in: ['rejected', 'cancelled', 'failure'] } }
+    });
+
+    const totalRevenue = approvedTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+    const approvedPaymentsCount = approvedTransactions.length;
+    const pendingPaymentsCount = pendingTransactions.length;
+    const rejectedPaymentsCount = rejectedTransactions.length;
+
+    // Ingresos del mes
+    const monthlyTransactions = approvedTransactions.filter(tx => new Date(tx.approvedAt || tx.createdAt) >= startOfMonth);
+    const monthlyRevenue = monthlyTransactions.reduce((sum, tx) => sum + tx.amount, 0);
 
     // 4. Estadísticas de Contenido
     const totalProfessions = await prisma.profession.count();
@@ -126,7 +142,7 @@ class AdminUseCases {
       },
       payments: {
         totalRevenue: totalRevenue,
-        monthlyRevenue: totalRevenue,
+        monthlyRevenue: monthlyRevenue,
         annualRevenue: totalRevenue * 12,
         approved: approvedPaymentsCount,
         pending: pendingPaymentsCount,
@@ -315,6 +331,267 @@ class AdminUseCases {
     });
 
     return { targetUserId, newStatus };
+  }
+
+  async getMembershipsList(filters) {
+    const { name, email, filterType, page = 1, limit = 50 } = filters;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+
+    const where = {};
+
+    if (name || email) {
+      where.user = {};
+      if (name) {
+        where.user.name = { contains: name, mode: 'insensitive' };
+      }
+      if (email) {
+        where.user.email = { contains: email, mode: 'insensitive' };
+      }
+    }
+
+    if (filterType === 'ACTIVE') {
+      where.status = 'ACTIVE';
+      where.endDate = { gte: now };
+    } else if (filterType === 'EXPIRING') {
+      where.status = 'ACTIVE';
+      where.endDate = { gte: now, lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) };
+    } else if (filterType === 'EXPIRED') {
+      where.OR = [
+        { status: 'INACTIVE' },
+        { endDate: { lt: now } }
+      ];
+    } else if (filterType === 'FREE') {
+      where.OR = [
+        { status: 'INACTIVE' },
+        { planType: 'FREE' }
+      ];
+    }
+
+    const total = await prisma.membership.count({ where });
+    const memberships = await prisma.membership.findMany({
+      where,
+      include: {
+        user: {
+          include: {
+            paymentTransactions: {
+              orderBy: { createdAt: 'desc' },
+              take: 1
+            }
+          }
+        }
+      },
+      orderBy: { endDate: 'desc' },
+      skip: parseInt(skip),
+      take: parseInt(limit)
+    });
+
+    const mapped = memberships.map(m => {
+      const daysRemaining = Math.max(0, Math.ceil((new Date(m.endDate) - now) / (1000 * 60 * 60 * 24)));
+      const lastPayment = m.user.paymentTransactions[0] || null;
+      return {
+        id: m.id,
+        userId: m.userId,
+        userName: m.user.name,
+        userEmail: m.user.email,
+        planType: m.planType,
+        status: m.status === 'ACTIVE' && new Date(m.endDate) >= now ? 'ACTIVE' : 'EXPIRED',
+        startDate: m.startDate,
+        endDate: m.endDate,
+        daysRemaining: m.status === 'ACTIVE' && new Date(m.endDate) >= now ? daysRemaining : 0,
+        lastPaymentAmount: lastPayment ? lastPayment.amount : null,
+        lastPaymentStatus: lastPayment ? lastPayment.status : null,
+        lastPaymentDate: lastPayment ? lastPayment.approvedAt || lastPayment.createdAt : null
+      };
+    });
+
+    if (filterType === 'FREE' || !filterType) {
+      const freeUsers = await prisma.user.findMany({
+        where: {
+          userType: 'FREE',
+          membership: null,
+          name: name ? { contains: name, mode: 'insensitive' } : undefined,
+          email: email ? { contains: email, mode: 'insensitive' } : undefined,
+        },
+        skip: Math.max(0, parseInt(skip) - total),
+        take: parseInt(limit)
+      });
+
+      freeUsers.forEach(u => {
+        if (mapped.length < limit) {
+          mapped.push({
+            id: null,
+            userId: u.id,
+            userName: u.name,
+            userEmail: u.email,
+            planType: 'FREE',
+            status: 'FREE',
+            startDate: u.createdAt,
+            endDate: null,
+            daysRemaining: 0,
+            lastPaymentAmount: null,
+            lastPaymentStatus: null,
+            lastPaymentDate: null
+          });
+        }
+      });
+    }
+
+    return {
+      memberships: mapped,
+      pagination: {
+        total: total + (filterType === 'FREE' || !filterType ? await prisma.user.count({ where: { userType: 'FREE', membership: null } }) : 0),
+        page: parseInt(page),
+        limit: parseInt(limit),
+      }
+    };
+  }
+
+  async getMembershipDetail(userId) {
+    const id = parseInt(userId);
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        membership: true,
+        professions: true,
+        paymentTransactions: {
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!user) throw new Error('Usuario no encontrado');
+
+    const now = new Date();
+    let daysRemaining = 0;
+    if (user.membership && user.membership.status === 'ACTIVE' && new Date(user.membership.endDate) >= now) {
+      daysRemaining = Math.ceil((new Date(user.membership.endDate) - now) / (1000 * 60 * 60 * 24));
+    }
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        professions: user.professions.map(p => p.name)
+      },
+      plan: user.membership ? {
+        planType: user.membership.planType,
+        status: user.membership.status === 'ACTIVE' && new Date(user.membership.endDate) >= now ? 'ACTIVE' : 'EXPIRED',
+        startDate: user.membership.startDate,
+        endDate: user.membership.endDate,
+        daysRemaining
+      } : {
+        planType: 'FREE',
+        status: 'FREE',
+        startDate: user.createdAt,
+        endDate: null,
+        daysRemaining: 0
+      },
+      payments: user.paymentTransactions.map(p => ({
+        id: p.id,
+        amount: p.amount,
+        createdAt: p.createdAt,
+        status: p.status,
+        mercadoPagoPaymentId: p.mercadoPagoPaymentId,
+        paymentMethod: p.paymentMethod
+      }))
+    };
+  }
+
+  async manuallyActivateVip(adminId, targetUserId) {
+    const userId = parseInt(targetUserId);
+    const now = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 30);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { userType: 'VIP' }
+      }),
+      prisma.membership.upsert({
+        where: { userId },
+        update: {
+          startDate: now,
+          endDate,
+          status: 'ACTIVE',
+          planType: 'VIP'
+        },
+        create: {
+          userId,
+          startDate: now,
+          endDate,
+          status: 'ACTIVE',
+          planType: 'VIP'
+        }
+      })
+    ]);
+    return { success: true };
+  }
+
+  async manuallyDeactivateVip(adminId, targetUserId) {
+    const userId = parseInt(targetUserId);
+    const now = new Date();
+    
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { userType: 'FREE' }
+      }),
+      prisma.membership.upsert({
+        where: { userId },
+        update: {
+          status: 'INACTIVE',
+          planType: 'FREE',
+          endDate: now
+        },
+        create: {
+          userId,
+          startDate: now,
+          endDate: now,
+          status: 'INACTIVE',
+          planType: 'FREE'
+        }
+      })
+    ]);
+    return { success: true };
+  }
+
+  async manuallyExtendMembership(adminId, targetUserId, days = 30) {
+    const userId = parseInt(targetUserId);
+    const membership = await prisma.membership.findUnique({
+      where: { userId }
+    });
+
+    let newEndDate = new Date();
+    if (membership && new Date(membership.endDate) > new Date()) {
+      newEndDate = new Date(membership.endDate);
+    }
+    newEndDate.setDate(newEndDate.getDate() + parseInt(days));
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { userType: 'VIP' }
+      }),
+      prisma.membership.upsert({
+        where: { userId },
+        update: {
+          endDate: newEndDate,
+          status: 'ACTIVE',
+          planType: 'VIP'
+        },
+        create: {
+          userId,
+          startDate: new Date(),
+          endDate: newEndDate,
+          status: 'ACTIVE',
+          planType: 'VIP'
+        }
+      })
+    ]);
+    return { success: true };
   }
 }
 

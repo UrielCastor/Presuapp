@@ -1,5 +1,6 @@
 require('dotenv').config();
 const app = require('./app');
+require('./infrastructure/cron/membershipCron');
 
 const PORT = process.env.PORT || 8080;
 

@@ -15,6 +15,9 @@ const protectRoute = async (req, res, next) => {
 
   try {
     const decoded = verifyToken(token);
+    // Verificar y actualizar de forma transparente si la membresía ha expirado
+    await userRepository.checkAndUpdateMembershipExpiration(decoded.id);
+    
     req.user = await userRepository.findById(decoded.id);
     if (!req.user) throw new Error('User not found');
     next();

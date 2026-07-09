@@ -62,8 +62,12 @@ class AuthUseCases {
       throw new Error('Esta cuenta ha sido suspendida. Contactá al administrador.');
     }
 
-    const token = generateToken(user.id);
-    return { user, token };
+    // Verificar y actualizar la membresía del usuario al iniciar sesión
+    await this.userRepository.checkAndUpdateMembershipExpiration(user.id);
+    const freshUser = await this.userRepository.findById(user.id);
+
+    const token = generateToken(freshUser.id);
+    return { user: freshUser, token };
   }
 }
 

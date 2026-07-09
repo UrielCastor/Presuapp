@@ -42,6 +42,10 @@ class PaymentController {
   // Endpoint extra temporal para simulación directa de pruebas locales sin requerir tunel HTTPS
   static async simulateSuccessPayment(req, res, next) {
     try {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json(formatResponse(false, null, 'El simulador no está disponible en producción.'));
+      }
+      
       const userId = req.user.id;
       const PaymentUseCases = require('../../application/use-cases/PaymentUseCases');
       const PrismaUserRepository = require('../../infrastructure/repositories/PrismaUserRepository');

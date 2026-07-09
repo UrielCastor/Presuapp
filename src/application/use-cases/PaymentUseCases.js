@@ -69,9 +69,20 @@ class PaymentUseCases {
         // simulamos exitosamente para soporte de QA e integración local:
         if (process.env.NODE_ENV !== 'production' && (String(paymentId).startsWith('test') || String(process.env.MP_ACCESS_TOKEN).includes('TEST'))) {
           console.log('Simulación de pago exitosa en entorno de pruebas local.');
+          
+          const match = String(paymentId).match(/test_payment_for_(\d+)/);
+          const extRef = match ? match[1] : '1';
+          
           paymentInfo = {
+            id: paymentId,
             status: 'approved',
-            external_reference: '1' // Mapea al usuario id: 1
+            external_reference: extRef,
+            preference_id: 'test_pref_id',
+            transaction_amount: 10000,
+            currency_id: 'ARS',
+            payment_method_id: 'test_method',
+            payment_type_id: 'test_type',
+            date_approved: new Date().toISOString()
           };
         } else {
           throw err;
@@ -96,8 +107,21 @@ class PaymentUseCases {
           planType: 'VIP'
         };
 
-        await this.userRepository.updateMembership(userId, membershipData);
-        console.log(`Membresía VIP actualizada con éxito para el usuario ID: ${userId}`);
+        const paymentTransactionData = {
+          mercadoPagoPaymentId: String(paymentInfo.id || paymentId),
+          mercadoPagoPreferenceId: paymentInfo.preference_id || null,
+          externalReference: paymentInfo.external_reference || null,
+          amount: parseFloat(paymentInfo.transaction_amount || 10000),
+          currency: paymentInfo.currency_id || 'ARS',
+          paymentMethod: paymentInfo.payment_method_id || null,
+          paymentType: paymentInfo.payment_type_id || null,
+          status: paymentInfo.status || 'approved',
+          approvedAt: paymentInfo.date_approved ? new Date(paymentInfo.date_approved) : new Date(),
+          rawResponse: paymentInfo
+        };
+
+        await this.userRepository.updateMembership(userId, membershipData, paymentTransactionData);
+        console.log(`Membresía VIP actualizada y PaymentTransaction registrada con éxito para el usuario ID: ${userId}`);
         return { success: true, userId, status: 'approved' };
       }
 

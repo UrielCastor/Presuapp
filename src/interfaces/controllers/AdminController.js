@@ -61,6 +61,62 @@ class AdminController {
       next(error);
     }
   }
+
+  static async getMemberships(req, res, next) {
+    try {
+      const { name, email, filterType, page, limit } = req.query;
+      const result = await adminUseCases.getMembershipsList({
+        name,
+        email,
+        filterType,
+        page,
+        limit
+      });
+      res.status(200).json(formatResponse(true, result, 'Membership list loaded'));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getMembershipById(req, res, next) {
+    try {
+      const { userId } = req.params;
+      const result = await adminUseCases.getMembershipDetail(userId);
+      res.status(200).json(formatResponse(true, result, 'Membership details loaded'));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async extendMembership(req, res, next) {
+    try {
+      const { userId, days } = req.body;
+      const result = await adminUseCases.manuallyExtendMembership(req.user.id, userId, days);
+      res.status(200).json(formatResponse(true, result, 'Membresía extendida con éxito'));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async manuallyActivateVip(req, res, next) {
+    try {
+      const { userId } = req.body;
+      const result = await adminUseCases.manuallyActivateVip(req.user.id, userId);
+      res.status(200).json(formatResponse(true, result, 'VIP activado con éxito'));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async manuallyDeactivateVip(req, res, next) {
+    try {
+      const { userId } = req.body;
+      const result = await adminUseCases.manuallyDeactivateVip(req.user.id, userId);
+      res.status(200).json(formatResponse(true, result, 'VIP desactivado con éxito'));
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = AdminController;
