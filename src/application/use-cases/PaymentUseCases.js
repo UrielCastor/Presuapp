@@ -1,27 +1,57 @@
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 class PaymentUseCases {
   constructor(userRepository) {
     this.userRepository = userRepository;
     
     // Initialise Mercado Pago SDK Client using modern configuration format
-    this.mpClient = new MercadoPagoConfig({
-      accessToken: process.env.MP_ACCESS_TOKEN || 'APP_USR-TEST-MERCADOPAGO-ACCESS-TOKEN'
-    });
-    this.preference = new Preference(this.mpClient);
-    this.payment = new Payment(this.mpClient);
+    if (!process.env.MP_ACCESS_TOKEN) {
+      console.error('ERROR CRÍTICO: La variable de entorno MP_ACCESS_TOKEN no está configurada.');
+      this.mpClient = null;
+      this.preference = null;
+      this.payment = null;
+    } else {
+      this.mpClient = new MercadoPagoConfig({
+        accessToken: process.env.MP_ACCESS_TOKEN
+      });
+      this.preference = new Preference(this.mpClient);
+      this.payment = new Payment(this.mpClient);
+    }
+  }
+
+  async getActivePlan() {
+    let plan = await prisma.membershipPlan.findFirst({ orderBy: { id: 'asc' } });
+    if (!plan) {
+      // Seed default plan if none exists
+      plan = await prisma.membershipPlan.create({
+        data: { name: 'VIP', price: 10000, currency: 'ARS', durationDays: 30, active: true }
+      });
+    }
+    return plan;
   }
 
   async createPreference(user) {
+    if (!this.preference) {
+      throw new Error('La integración de Mercado Pago no está disponible porque falta la variable MP_ACCESS_TOKEN.');
+    }
+
+    const plan = await this.getActivePlan();
+    
+    if (!plan.active) {
+      throw new Error('El plan VIP no está disponible actualmente.');
+    }
+
     const preferenceData = {
       body: {
         items: [
           {
             id: 'plan-vip',
-            title: 'PresuApp - Plan VIP (Suscripción Mensual)',
+            title: `PresuApp - Plan ${plan.name} (Suscripción Mensual)`,
             quantity: 1,
-            unit_price: 10000,
-            currency_id: 'ARS',
+            unit_price: plan.price,
+            currency_id: plan.currency,
           }
         ],
         payer: {
@@ -30,12 +60,12 @@ class PaymentUseCases {
         },
         external_reference: String(user.id),
         back_urls: {
-          success: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile?payment=success`,
-          failure: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile?payment=failure`,
-          pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile?payment=pending`,
+          success: `${process.env.FRONTEND_URL}/profile?payment=success`,
+          failure: `${process.env.FRONTEND_URL}/profile?payment=failure`,
+          pending: `${process.env.FRONTEND_URL}/profile?payment=pending`,
         },
         auto_return: 'approved',
-        notification_url: `${process.env.BACKEND_URL || 'https://presuapp.locallink.sh'}/api/payments/webhook`,
+        notification_url: `${process.env.BACKEND_URL}/api/payments/webhook`,
       }
     };
 
@@ -56,11 +86,15 @@ class PaymentUseCases {
     if (!paymentId) return { success: false, message: 'Falta paymentId' };
 
     try {
+      const plan = await this.getActivePlan();
       console.log(`Procesando webhook de pago. ID: ${paymentId}, Topic: ${topicAction}`);
       
       // En entorno local de pruebas con credenciales sandbox/test ficticias, atajamos errores para no romper el flujo
       let paymentInfo;
       try {
+        if (!this.payment) {
+          throw new Error('La integración de Mercado Pago no está inicializada (falta token).');
+        }
         paymentInfo = await this.payment.get({ id: paymentId });
       } catch (err) {
         console.warn('Advertencia: No se pudo obtener información del pago desde la API de Mercado Pago. (Credenciales de pruebas/red)', err.message);
@@ -78,8 +112,8 @@ class PaymentUseCases {
             status: 'approved',
             external_reference: extRef,
             preference_id: 'test_pref_id',
-            transaction_amount: 10000,
-            currency_id: 'ARS',
+            transaction_amount: plan.price,
+            currency_id: plan.currency,
             payment_method_id: 'test_method',
             payment_type_id: 'test_type',
             date_approved: new Date().toISOString()
@@ -95,10 +129,10 @@ class PaymentUseCases {
           throw new Error('Falta external_reference en el webhook del pago');
         }
 
-        // Activamos membresía VIP por 30 días
+        // Activamos membresía VIP por la duración configurada en el plan
         const startDate = new Date();
         const endDate = new Date();
-        endDate.setDate(endDate.getDate() + 30); // 30 días en el futuro
+        endDate.setDate(endDate.getDate() + plan.durationDays);
 
         const membershipData = {
           startDate,

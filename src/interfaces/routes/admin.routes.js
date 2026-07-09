@@ -17,4 +17,9 @@ router.post('/memberships/extend', protectAdminRoute, AdminController.extendMemb
 router.post('/memberships/activate', protectAdminRoute, AdminController.manuallyActivateVip);
 router.post('/memberships/deactivate', protectAdminRoute, AdminController.manuallyDeactivateVip);
 
+// Plan VIP Config
+router.get('/plan', protectAdminRoute, AdminController.getPlan);
+router.put('/plan', protectAdminRoute, AdminController.updatePlanConfig);
+router.get('/plan/logs', protectAdminRoute, AdminController.getPlanChangeLogs);
+
 module.exports = router;

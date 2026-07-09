@@ -47,6 +47,20 @@ export default function AdminDashboard() {
   const [actionSubmitting, setActionSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
 
+  // Plan states
+  const [membershipPlan, setMembershipPlan] = useState(null);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState('');
+  
+  const [planLogs, setPlanLogs] = useState([]);
+  const [planLogsLoading, setPlanLogsLoading] = useState(false);
+  const [planLogsError, setPlanLogsError] = useState('');
+
+  const [isEditingPlan, setIsEditingPlan] = useState(false);
+  const [planForm, setPlanForm] = useState({ name: '', price: '', durationDays: '', active: true });
+  const [planFormSubmitting, setPlanFormSubmitting] = useState(false);
+  const [planFormError, setPlanFormError] = useState('');
+
   // Fetch stats
   const fetchStats = async () => {
     setStatsLoading(true);
@@ -59,6 +73,44 @@ export default function AdminDashboard() {
       setStatsError('No se pudieron cargar las estadísticas generales.');
     } finally {
       setStatsLoading(false);
+    }
+  };
+
+  // Fetch plan
+  const fetchPlan = async () => {
+    setPlanLoading(true);
+    setPlanError('');
+    try {
+      const res = await axiosInstance.get('/admin/plan');
+      setMembershipPlan(res.data.data);
+      if (res.data.data) {
+        setPlanForm({
+          name: res.data.data.name,
+          price: res.data.data.price,
+          durationDays: res.data.data.durationDays,
+          active: res.data.data.active
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setPlanError('Error al cargar la configuración del plan VIP.');
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
+  // Fetch plan logs
+  const fetchPlanLogs = async () => {
+    setPlanLogsLoading(true);
+    setPlanLogsError('');
+    try {
+      const res = await axiosInstance.get('/admin/plan/logs');
+      setPlanLogs(res.data.data);
+    } catch (err) {
+      console.error(err);
+      setPlanLogsError('Error al cargar el historial de cambios del plan.');
+    } finally {
+      setPlanLogsLoading(false);
     }
   };
 
@@ -116,10 +168,14 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === 'dashboard') {
       fetchStats();
+      fetchPlan();
     } else if (activeTab === 'users') {
       fetchUsers();
     } else if (activeTab === 'memberships') {
       fetchMemberships();
+    } else if (activeTab === 'config') {
+      fetchPlan();
+      fetchPlanLogs();
     }
   }, [activeTab, page]);
 
@@ -265,6 +321,51 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSavePlanConfig = async (e) => {
+    e.preventDefault();
+    setPlanFormError('');
+    setPlanFormSubmitting(true);
+
+    const priceNum = parseFloat(planForm.price);
+    const durationNum = parseInt(planForm.durationDays);
+
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setPlanFormError('El precio debe ser un número mayor a 0.');
+      setPlanFormSubmitting(false);
+      return;
+    }
+
+    if (isNaN(durationNum) || durationNum <= 0 || !Number.isInteger(durationNum)) {
+      setPlanFormError('La duración debe ser un número entero mayor a 0.');
+      setPlanFormSubmitting(false);
+      return;
+    }
+
+    if (!planForm.name || !planForm.name.trim()) {
+      setPlanFormError('El nombre del plan no puede estar vacío.');
+      setPlanFormSubmitting(false);
+      return;
+    }
+
+    try {
+      const res = await axiosInstance.put('/admin/plan', {
+        name: planForm.name,
+        price: priceNum,
+        durationDays: durationNum,
+        active: planForm.active,
+        currency: 'ARS'
+      });
+      setMembershipPlan(res.data.data.plan);
+      setIsEditingPlan(false);
+      fetchPlanLogs();
+    } catch (err) {
+      console.error(err);
+      setPlanFormError(err.response?.data?.message || 'Error al actualizar la configuración del plan.');
+    } finally {
+      setPlanFormSubmitting(false);
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
     return new Date(dateStr).toLocaleDateString('es-AR', {
@@ -337,6 +438,23 @@ export default function AdminDashboard() {
           }}
         >
           💳 Membresías & Pagos
+        </button>
+        <button
+          onClick={() => { setActiveTab('config'); setPage(1); }}
+          className={`tab-btn ${activeTab === 'config' ? 'active' : ''}`}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: activeTab === 'config' ? 'var(--brand-primary)' : 'var(--text-secondary)',
+            fontWeight: 'bold',
+            padding: '12px 20px',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            borderBottom: activeTab === 'config' ? '3px solid var(--brand-primary)' : '3px solid transparent',
+            transition: 'all var(--transition)'
+          }}
+        >
+          ⚙️ Configuración VIP
         </button>
       </div>
 
@@ -433,6 +551,26 @@ export default function AdminDashboard() {
                     Actividad de profesionales en tiempo real
                   </div>
                 </Card>
+
+                {/* CARD 5: PLAN VIP CONFIGURADO */}
+                {membershipPlan && (
+                  <Card style={{ borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Membresía VIP</h3>
+                        <span style={{ fontSize: '1.25rem' }}>💎</span>
+                      </div>
+                      <strong style={{ fontSize: '2.0rem', display: 'block', margin: '12px 0 6px', color: '#fff' }}>
+                        {membershipPlan.name}
+                      </strong>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span>Precio: <b style={{ color: '#f59e0b' }}>${membershipPlan.price.toLocaleString('es-AR')} ARS</b></span>
+                      <span>Duración: <b>{membershipPlan.durationDays} días</b></span>
+                      <span>Estado: <span className={`badge ${membershipPlan.active ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.68rem', padding: '1px 6px', display: 'inline-block', marginLeft: '4px' }}>{membershipPlan.active ? 'Activo' : 'Inactivo'}</span></span>
+                    </div>
+                  </Card>
+                )}
               </div>
 
               {/* Sección Gráficos Nativos */}
@@ -908,6 +1046,217 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* RENDER TAB 4: CONFIGURACION PLAN VIP */}
+      {activeTab === 'config' && (
+        <div>
+          {planLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
+              <div className="spinner"></div>
+            </div>
+          ) : planError ? (
+            <div className="alert alert-error">{planError}</div>
+          ) : !membershipPlan ? null : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+              
+              {/* Sección Principal Plan VIP */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+                
+                {/* CARD 1: Detalle del Plan VIP */}
+                <Card style={{ borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: '750', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      💳 Configuración del Plan VIP
+                    </h3>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem', marginBottom: '24px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Nombre del Plan:</span>
+                        <strong style={{ color: '#fff' }}>{membershipPlan.name}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Precio Mensual:</span>
+                        <strong style={{ color: '#f59e0b' }}>${membershipPlan.price.toLocaleString('es-AR')} {membershipPlan.currency}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Duración:</span>
+                        <strong style={{ color: '#fff' }}>{membershipPlan.durationDays} días</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Estado de Ventas:</span>
+                        <span className={`badge ${membershipPlan.active ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.75rem', padding: '3px 10px', whiteSpace: 'nowrap' }}>
+                          {membershipPlan.active ? '🟢 Activo (Permite compras)' : '🔴 Inactivo (Bloquea compras)'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {!isEditingPlan && (
+                    <button
+                      onClick={() => setIsEditingPlan(true)}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: '0.82rem',
+                        fontWeight: '600',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(245, 158, 11, 0.3)',
+                        background: 'rgba(245, 158, 11, 0.05)',
+                        color: '#f59e0b',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        alignSelf: 'flex-start'
+                      }}
+                    >
+                      ✏️ Editar Plan
+                    </button>
+                  )}
+                </Card>
+
+                {/* CARD 2: Formulario Edición de Plan (solo si isEditingPlan es true) */}
+                {isEditingPlan && (
+                  <Card style={{ border: '1px solid var(--border-color)' }}>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: '750', marginBottom: '20px' }}>
+                      ✏️ Modificar Parámetros VIP
+                    </h3>
+                    <form onSubmit={handleSavePlanConfig} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div>
+                        <label className="field-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem' }}>Nombre del Plan</label>
+                        <input
+                          type="text"
+                          value={planForm.name}
+                          onChange={e => setPlanForm(prev => ({ ...prev, name: e.target.value }))}
+                          className="main-search-input"
+                          style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', width: '100%', padding: '8px 10px', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="field-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem' }}>Precio Mensual (ARS)</label>
+                        <input
+                          type="number"
+                          value={planForm.price}
+                          onChange={e => setPlanForm(prev => ({ ...prev, price: e.target.value }))}
+                          placeholder="Ej: 15000"
+                          className="main-search-input"
+                          style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', width: '100%', padding: '8px 10px', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="field-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem' }}>Duración (Días)</label>
+                        <input
+                          type="number"
+                          value={planForm.durationDays}
+                          onChange={e => setPlanForm(prev => ({ ...prev, durationDays: e.target.value }))}
+                          placeholder="Ej: 30"
+                          className="main-search-input"
+                          style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', width: '100%', padding: '8px 10px', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '8px 0' }}>
+                        <input
+                          type="checkbox"
+                          id="active"
+                          checked={planForm.active}
+                          onChange={e => setPlanForm(prev => ({ ...prev, active: e.target.checked }))}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="active" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                          Plan VIP Activo
+                        </label>
+                      </div>
+
+                      {planFormError && (
+                        <div className="alert alert-error" style={{ padding: '8px 12px', fontSize: '0.8rem', marginTop: '4px' }}>
+                          ⚠️ {planFormError}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => { setIsEditingPlan(false); setPlanFormError(''); }}
+                          disabled={planFormSubmitting}
+                          style={{ padding: '8px 14px', fontSize: '0.8rem', fontWeight: '600', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={planFormSubmitting}
+                          style={{ padding: '8px 14px', fontSize: '0.8rem', fontWeight: '600', borderRadius: '6px', border: 'none', background: 'var(--brand-primary)', color: '#fff', cursor: 'pointer' }}
+                        >
+                          {planFormSubmitting ? 'Guardando...' : 'Guardar Cambios'}
+                        </button>
+                      </div>
+                    </form>
+                  </Card>
+                )}
+
+              </div>
+
+              {/* CARD 3: Historial de Modificaciones */}
+              <Card style={{ border: '1px solid var(--border-color)' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: '750', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  📜 Historial de Cambios del Plan
+                </h3>
+
+                {planLogsLoading ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Cargando auditoría...</p>
+                ) : planLogsError ? (
+                  <div className="alert alert-error" style={{ fontSize: '0.8rem' }}>{planLogsError}</div>
+                ) : planLogs.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic', padding: '10px 0' }}>
+                    No se han registrado modificaciones en este plan aún.
+                  </p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <th style={{ padding: '8px 10px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Fecha</th>
+                          <th style={{ padding: '8px 10px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Administrador</th>
+                          <th style={{ padding: '8px 10px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Campo</th>
+                          <th style={{ padding: '8px 10px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Valor Anterior</th>
+                          <th style={{ padding: '8px 10px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Valor Nuevo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {planLogs.map(log => (
+                          <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', fontSize: '0.8rem' }}>
+                            <td style={{ padding: '8px 10px', color: 'var(--text-muted)' }}>
+                              {new Date(log.createdAt).toLocaleString('es-AR')}
+                            </td>
+                            <td style={{ padding: '8px 10px', fontWeight: 600, color: '#fff' }}>
+                              {log.adminName} (ID: {log.adminUserId})
+                            </td>
+                            <td style={{ padding: '8px 10px', color: 'var(--brand-primary-light)' }}>
+                              {log.fieldChanged === 'price' ? 'Precio 💵' :
+                               log.fieldChanged === 'durationDays' ? 'Duración 📆' :
+                               log.fieldChanged === 'name' ? 'Nombre 🏷️' :
+                               log.fieldChanged === 'active' ? 'Estado ⚙️' : log.fieldChanged}
+                            </td>
+                            <td style={{ padding: '8px 10px', textDecoration: 'line-through', color: 'var(--brand-danger-light)' }}>
+                              {log.fieldChanged === 'price' ? `$${parseFloat(log.previousValue).toLocaleString('es-AR')}` :
+                               log.fieldChanged === 'active' ? (log.previousValue === 'true' ? 'Activo' : 'Inactivo') : log.previousValue}
+                            </td>
+                            <td style={{ padding: '8px 10px', color: 'var(--brand-success-light)', fontWeight: 600 }}>
+                              {log.fieldChanged === 'price' ? `$${parseFloat(log.newValue).toLocaleString('es-AR')}` :
+                               log.fieldChanged === 'active' ? (log.newValue === 'true' ? 'Activo' : 'Inactivo') : log.newValue}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+
             </div>
           )}
         </div>

@@ -127,3 +127,29 @@ model PaymentTransaction {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model MembershipPlan {
+  id           Int      @id @default(autoincrement())
+  name         String   @default("VIP")
+  price        Float    @default(10000)
+  currency     String   @default("ARS")
+  durationDays Int      @default(30)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  changeLogs   PlanChangeLog[]
+}
+
+model PlanChangeLog {
+  id               Int      @id @default(autoincrement())
+  planId           Int
+  adminUserId      Int
+  adminName        String
+  fieldChanged     String
+  previousValue    String
+  newValue         String
+  createdAt        DateTime @default(now())
+
+  plan             MembershipPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+}

@@ -12,9 +12,23 @@ export default function Profile() {
   const [paymentStatus, setPaymentStatus] = useState(searchParams.get('payment'));
   const [loadingPay, setLoadingPay] = useState(false);
   const [errorPay, setErrorPay] = useState('');
+  const [profilePlan, setProfilePlan] = useState(null);
+  const [profilePlanLoading, setProfilePlanLoading] = useState(true);
   
+  const fetchActivePlan = async () => {
+    try {
+      const res = await axiosInstance.get('/payments/plan');
+      setProfilePlan(res.data.data);
+    } catch (err) {
+      console.error('Error al obtener plan activo:', err);
+    } finally {
+      setProfilePlanLoading(false);
+    }
+  };
+
   useEffect(() => {
     refreshProfile();
+    fetchActivePlan();
   }, [refreshProfile]);
 
   const handleUpgrade = async () => {
@@ -248,38 +262,46 @@ export default function Profile() {
             >
               <div style={{ textAlign: 'left' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', display: 'block', marginBottom: '2px' }}>
-                  ⭐ Actualizate a Platinum VIP
+                  ⭐ Actualizate a {profilePlan ? `${profilePlan.name}` : 'Platinum VIP'}
                 </span>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.4', display: 'block' }}>
-                  Eliminá límites de clientes, presupuestos y catálogos de rubros por $10.000 / mes.
+                  Eliminá límites de clientes, presupuestos y catálogos de rubros por {profilePlan ? `$${profilePlan.price.toLocaleString('es-AR')} ${profilePlan.currency}` : '$10.000 ARS'} / mes.
                 </span>
               </div>
               
-              <Button 
-                onClick={handleUpgrade} 
-                disabled={loadingPay} 
-                variant="primary" 
-                style={{ width: '100%', padding: '10px', fontSize: '0.82rem', fontWeight: 700 }}
-              >
-                {loadingPay ? 'Iniciando...' : 'Obtener VIP — $10.000 / mes'}
-              </Button>
-              
-              <button 
-                onClick={handleSimulateSuccess} 
-                disabled={loadingPay} 
-                style={{ 
-                  background: 'none', 
-                  border: 'none', 
-                  color: 'var(--text-muted)', 
-                  cursor: 'pointer', 
-                  fontSize: '0.72rem', 
-                  textDecoration: 'underline',
-                  textAlign: 'center',
-                  marginTop: '2px'
-                }}
-              >
-                Simular Pago Aprobado (Pruebas)
-              </button>
+              {profilePlan && !profilePlan.active ? (
+                <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#f87171', fontSize: '0.8rem', textAlign: 'center', fontWeight: 'bold' }}>
+                  El plan VIP no está disponible actualmente.
+                </div>
+              ) : (
+                <>
+                  <Button 
+                    onClick={handleUpgrade} 
+                    disabled={loadingPay || !profilePlan} 
+                    variant="primary" 
+                    style={{ width: '100%', padding: '10px', fontSize: '0.82rem', fontWeight: 700 }}
+                  >
+                    {loadingPay ? 'Iniciando...' : `Obtener VIP — ${profilePlan ? `$${profilePlan.price.toLocaleString('es-AR')}` : '$10.000'} / mes`}
+                  </Button>
+                  
+                  <button 
+                    onClick={handleSimulateSuccess} 
+                    disabled={loadingPay || !profilePlan} 
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      color: 'var(--text-muted)', 
+                      cursor: 'pointer', 
+                      fontSize: '0.72rem', 
+                      textDecoration: 'underline',
+                      textAlign: 'center',
+                      marginTop: '2px'
+                    }}
+                  >
+                    Simular Pago Aprobado (Pruebas)
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <div 

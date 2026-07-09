@@ -593,6 +593,105 @@ class AdminUseCases {
     ]);
     return { success: true };
   }
+
+  // ==========================================
+  // MEMBERSHIP PLAN CONFIG
+  // ==========================================
+
+  async getMembershipPlan() {
+    let plan = await prisma.membershipPlan.findFirst({ orderBy: { id: 'asc' } });
+
+    // Seed: si no existe, crear el plan por defecto
+    if (!plan) {
+      plan = await prisma.membershipPlan.create({
+        data: {
+          name: 'VIP',
+          price: 10000,
+          currency: 'ARS',
+          durationDays: 30,
+          active: true
+        }
+      });
+    }
+
+    return plan;
+  }
+
+  async updateMembershipPlan(adminUserId, adminName, updates) {
+    const plan = await this.getMembershipPlan();
+    const changes = [];
+
+    // Validaciones
+    if (updates.price !== undefined) {
+      const price = parseFloat(updates.price);
+      if (isNaN(price) || price <= 0) throw new Error('El precio debe ser un número mayor a 0.');
+      if (price !== plan.price) {
+        changes.push({ field: 'price', prev: String(plan.price), next: String(price) });
+      }
+      updates.price = price;
+    }
+
+    if (updates.durationDays !== undefined) {
+      const days = parseInt(updates.durationDays);
+      if (isNaN(days) || days <= 0) throw new Error('La duración debe ser un número entero mayor a 0.');
+      if (days !== plan.durationDays) {
+        changes.push({ field: 'durationDays', prev: String(plan.durationDays), next: String(days) });
+      }
+      updates.durationDays = days;
+    }
+
+    if (updates.name !== undefined && updates.name !== plan.name) {
+      if (!updates.name.trim()) throw new Error('El nombre del plan no puede estar vacío.');
+      changes.push({ field: 'name', prev: plan.name, next: updates.name.trim() });
+      updates.name = updates.name.trim();
+    }
+
+    if (updates.active !== undefined && updates.active !== plan.active) {
+      changes.push({ field: 'active', prev: String(plan.active), next: String(updates.active) });
+    }
+
+    if (updates.currency !== undefined && updates.currency !== plan.currency) {
+      changes.push({ field: 'currency', prev: plan.currency, next: updates.currency });
+    }
+
+    if (changes.length === 0) {
+      return { plan, message: 'No se detectaron cambios.' };
+    }
+
+    // Transacción: actualizar plan + registrar logs
+    const logData = changes.map(c => ({
+      planId: plan.id,
+      adminUserId,
+      adminName,
+      fieldChanged: c.field,
+      previousValue: c.prev,
+      newValue: c.next
+    }));
+
+    const updateData = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.price !== undefined) updateData.price = updates.price;
+    if (updates.currency !== undefined) updateData.currency = updates.currency;
+    if (updates.durationDays !== undefined) updateData.durationDays = updates.durationDays;
+    if (updates.active !== undefined) updateData.active = updates.active;
+
+    await prisma.$transaction([
+      prisma.membershipPlan.update({ where: { id: plan.id }, data: updateData }),
+      prisma.planChangeLog.createMany({ data: logData })
+    ]);
+
+    const updated = await prisma.membershipPlan.findUnique({ where: { id: plan.id } });
+    return { plan: updated, changesApplied: changes.length };
+  }
+
+  async getPlanChangeLogs(limit = 20) {
+    const logs = await prisma.planChangeLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: { plan: { select: { name: true } } }
+    });
+    return logs;
+  }
 }
 
 module.exports = AdminUseCases;

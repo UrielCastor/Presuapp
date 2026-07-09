@@ -14,6 +14,15 @@ class PaymentController {
     }
   }
 
+  static async getActivePlan(req, res, next) {
+    try {
+      const plan = await paymentUseCases.getActivePlan();
+      res.status(200).json(formatResponse(true, plan));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async webhook(req, res, next) {
     try {
       // Mercado Pago webhook payload formats

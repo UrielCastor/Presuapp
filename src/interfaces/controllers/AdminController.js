@@ -117,6 +117,39 @@ class AdminController {
       next(error);
     }
   }
+
+  // Plan VIP Config
+  static async getPlan(req, res, next) {
+    try {
+      const plan = await adminUseCases.getMembershipPlan();
+      res.status(200).json(formatResponse(true, plan, 'Plan loaded'));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updatePlanConfig(req, res, next) {
+    try {
+      const { name, price, currency, durationDays, active } = req.body;
+      const result = await adminUseCases.updateMembershipPlan(
+        req.user.id,
+        req.user.name || req.user.email,
+        { name, price, currency, durationDays, active }
+      );
+      res.status(200).json(formatResponse(true, result, 'Plan actualizado con éxito'));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getPlanChangeLogs(req, res, next) {
+    try {
+      const logs = await adminUseCases.getPlanChangeLogs();
+      res.status(200).json(formatResponse(true, logs, 'Change logs loaded'));
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = AdminController;
