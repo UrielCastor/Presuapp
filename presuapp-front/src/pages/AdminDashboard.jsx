@@ -493,19 +493,35 @@ export default function AdminDashboard() {
                   </div>
                 </Card>
 
-                {/* CARD 2: MEMBRESÍAS */}
-                <Card style={{ borderLeft: '4px solid var(--brand-warning)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Membresías VIP</h3>
-                    <span style={{ fontSize: '1.25rem' }}>💳</span>
+                {/* CARD 2: FUSIÓN DE CONFIGURACIÓN Y MÉTRICAS VIP */}
+                <Card style={{ borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Membresías VIP</h3>
+                      <span style={{ fontSize: '1.25rem' }}>💎</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '12px 0' }}>
+                      <strong style={{ fontSize: '1.5rem', color: '#fff', margin: 0 }}>
+                        {membershipPlan ? membershipPlan.name : 'VIP'}
+                      </strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        Activas: <b style={{ color: 'var(--brand-warning)', fontSize: '0.95rem' }}>{stats.memberships.active}</b>
+                      </span>
+                    </div>
+                    {membershipPlan && (
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'flex', gap: '8px', marginBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
+                        <span>Precio: <b style={{ color: '#f59e0b' }}>${membershipPlan.price.toLocaleString('es-AR')}</b></span>
+                        <span>•</span>
+                        <span>Días: <b>{membershipPlan.durationDays}</b></span>
+                        <span>•</span>
+                        <span>Estado: <b style={{ color: membershipPlan.active ? 'var(--brand-success)' : 'var(--brand-danger)' }}>{membershipPlan.active ? 'Activo' : 'Inactivo'}</b></span>
+                      </div>
+                    )}
                   </div>
-                  <strong style={{ fontSize: '2rem', display: 'block', margin: '12px 0 6px', color: '#fff' }}>
-                    {stats.memberships.active} <span style={{ fontSize: '0.9rem', fontWeight: '500', color: 'var(--text-muted)' }}>activas</span>
-                  </strong>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
                     <span>Próximos vencimientos (7d): <b style={{ color: 'var(--brand-danger)' }}>{stats.memberships.nearExpiration}</b></span>
                   </div>
-                  <div style={{ marginTop: '10px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '6px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.03)', padding: '6px 8px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
                     <span>Vencidas: <b>{stats.memberships.expired}</b></span>
                     <span>Renovaciones: <b>{stats.memberships.renewals}</b></span>
                     <span>Canceladas: <b>{stats.memberships.cancellations}</b></span>
@@ -527,9 +543,9 @@ export default function AdminDashboard() {
                     <span>Anual: <b>${stats.payments.annualRevenue.toLocaleString('es-AR')}</b></span>
                   </div>
                   <div style={{ marginTop: '10px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '6px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Aprobados: <b style={{ color: 'var(--brand-success)' }}>{stats.payments.approved}</b></span>
-                    <span>Pendientes: <b>{stats.payments.pending}</b></span>
-                    <span>Rechazados: <b style={{ color: 'var(--brand-danger)' }}>{stats.payments.rejected}</b></span>
+                     <span>Aprobados: <b style={{ color: 'var(--brand-success)' }}>{stats.payments.approved}</b></span>
+                     <span>Pendientes: <b>{stats.payments.pending}</b></span>
+                     <span>Rechazados: <b style={{ color: 'var(--brand-danger)' }}>{stats.payments.rejected}</b></span>
                   </div>
                 </Card>
 
@@ -551,26 +567,6 @@ export default function AdminDashboard() {
                     Actividad de profesionales en tiempo real
                   </div>
                 </Card>
-
-                {/* CARD 5: PLAN VIP CONFIGURADO */}
-                {membershipPlan && (
-                  <Card style={{ borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Membresía VIP</h3>
-                        <span style={{ fontSize: '1.25rem' }}>💎</span>
-                      </div>
-                      <strong style={{ fontSize: '2.0rem', display: 'block', margin: '12px 0 6px', color: '#fff' }}>
-                        {membershipPlan.name}
-                      </strong>
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span>Precio: <b style={{ color: '#f59e0b' }}>${membershipPlan.price.toLocaleString('es-AR')} ARS</b></span>
-                      <span>Duración: <b>{membershipPlan.durationDays} días</b></span>
-                      <span>Estado: <span className={`badge ${membershipPlan.active ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.68rem', padding: '1px 6px', display: 'inline-block', marginLeft: '4px' }}>{membershipPlan.active ? 'Activo' : 'Inactivo'}</span></span>
-                    </div>
-                  </Card>
-                )}
               </div>
 
               {/* Sección Gráficos Nativos */}

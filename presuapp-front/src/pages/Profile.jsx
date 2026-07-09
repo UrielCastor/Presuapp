@@ -50,20 +50,6 @@ export default function Profile() {
     }
   };
 
-  const handleSimulateSuccess = async () => {
-    setLoadingPay(true);
-    setErrorPay('');
-    try {
-      await axiosInstance.post('/payments/simulate-success');
-      setPaymentStatus('success');
-      setSearchParams({ payment: 'success' });
-      await refreshProfile();
-    } catch (err) {
-      setErrorPay('Error al simular el pago.');
-    } finally {
-      setLoadingPay(false);
-    }
-  };
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
@@ -283,23 +269,6 @@ export default function Profile() {
                   >
                     {loadingPay ? 'Iniciando...' : `Obtener VIP — ${profilePlan ? `$${profilePlan.price.toLocaleString('es-AR')}` : '$10.000'} / mes`}
                   </Button>
-                  
-                  <button 
-                    onClick={handleSimulateSuccess} 
-                    disabled={loadingPay || !profilePlan} 
-                    style={{ 
-                      background: 'none', 
-                      border: 'none', 
-                      color: 'var(--text-muted)', 
-                      cursor: 'pointer', 
-                      fontSize: '0.72rem', 
-                      textDecoration: 'underline',
-                      textAlign: 'center',
-                      marginTop: '2px'
-                    }}
-                  >
-                    Simular Pago Aprobado (Pruebas)
-                  </button>
                 </>
               )}
             </div>

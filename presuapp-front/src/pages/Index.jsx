@@ -91,32 +91,24 @@ export default function Index() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="landing-hero-section">
-        <div className="hero-content">
-          <h1 className="hero-title">Encontrá el Profesional Ideal</h1>
-          <p className="hero-subtitle">
+      {/* Unified Welcome & Search Card */}
+      <section className="welcome-search-card-wrapper">
+        <div className="welcome-search-card">
+          <div className="brand-mini-badge">⚡ Directorio PresuApp</div>
+          <h2 className="welcome-card-title">Encontrá el Profesional Ideal</h2>
+          <p className="welcome-card-subtitle">
             Buscá electricistas, plomeros, gasistas y técnicos independientes registrados en todo el país.
           </p>
-        </div>
-      </section>
-
-      {/* Search and Filters Section */}
-      <section className="search-section-wrapper">
-        <div className="search-box-card">
           <div className="main-search-input-wrapper">
             <span className="search-box-icon">🔍</span>
             <input
               type="text"
-              placeholder="Buscar por nombre, profesión, ciudad o localidad..."
+              placeholder="Buscar por nombre, rubro, ciudad o localidad..."
               className="main-search-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <p className="search-helper-text">
-            Buscá y filtrá dinámicamente. Tip: Escribí "VIP" o el nombre de una localidad como "CABA".
-          </p>
         </div>
       </section>
 
