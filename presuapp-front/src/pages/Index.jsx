@@ -35,13 +35,15 @@ export default function Index() {
 
   // Initial mount load
   useEffect(() => {
-    fetchProfessionals('', true);
+    // Start with empty state and no loading screen since listing is only active on-demand
+    setLoading(false);
   }, []);
 
   // Debounced search logic for query input changes
   useEffect(() => {
-    if (searchQuery === '') {
-      fetchProfessionals('');
+    if (searchQuery.trim() === '') {
+      setProfessionals([]);
+      setIsSearching(false);
       return;
     }
 
@@ -113,116 +115,118 @@ export default function Index() {
       </section>
 
       {/* Results Section */}
-      <section className="results-grid-section" style={{ position: 'relative', minHeight: '200px' }}>
-        {loading ? (
-          <Loading message="Cargando profesionales disponibles..." />
-        ) : (
-          <>
-            {isSearching && (
-              <div className="search-inline-loader" style={{
-                position: 'absolute',
-                top: '-25px',
-                right: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '0.85rem',
-                color: 'var(--text-muted)',
-                backgroundColor: 'rgba(30, 41, 59, 0.7)',
-                padding: '4px 10px',
-                borderRadius: '20px',
-                backdropFilter: 'blur(4px)',
-                border: '1px solid var(--border-color)',
-                zIndex: 10
-              }}>
-                <span className="search-mini-spinner" style={{
-                  display: 'inline-block',
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  border: '2px solid rgba(255, 255, 255, 0.2)',
-                  borderTopColor: 'var(--text-primary)',
-                  animation: 'spin 0.8s linear infinite'
-                }}></span>
-                <span>Buscando...</span>
-              </div>
-            )}
-
-            <div style={{
-              opacity: isSearching ? 0.6 : 1,
-              transition: 'opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-              pointerEvents: isSearching ? 'none' : 'auto'
-            }}>
-              {professionals.length === 0 ? (
-                <div className="no-results-card">
-                  <div className="no-results-icon">🔍</div>
-                  <h3>No se encontraron profesionales para tu búsqueda.</h3>
-                  <p>Intentá modificando los filtros o buscando palabras clave más directas.</p>
-                </div>
-              ) : (
-                <div className="professionals-cards-grid">
-                  {professionals.map((prof) => (
-                    <Card key={prof.id} className={`professional-result-card ${prof.userType === 'VIP' ? 'vip-starred' : ''}`}>
-                      
-                      {/* Header elements */}
-                      <div className="prof-card-top">
-                        <div className="avatar-section">
-                          <div className={`prof-large-avatar ${prof.userType === 'VIP' ? 'vip-avatar-border' : ''}`}>
-                            {prof.name[0].toUpperCase()}
-                          </div>
-                          {prof.userType === 'VIP' && (
-                            <span className="badge-vip-shield">👑 VIP</span>
-                          )}
-                        </div>
-                        <div className="prof-name-info">
-                          <h3 className="prof-card-name">{prof.name}</h3>
-                          <div className="prof-residence-row">
-                            <span className="residence-pin">📍</span>
-                            <span className="residence-text">
-                              {prof.locality || prof.city ? `${prof.locality || ''}, ${prof.city || ''}` : 'Residencia no especificada'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Body elements */}
-                      <div className="prof-card-body">
-                        {/* Professions list */}
-                        <div className="professions-tags-wrapper">
-                          {prof.professions && prof.professions.length > 0 ? (
-                            prof.professions.map((p) => (
-                              <span key={p.id} className="profession-tag">🏅 {p.name}</span>
-                            ))
-                          ) : (
-                            <span className="profession-tag tag-empty">Servicios independientes</span>
-                          )}
-                        </div>
-
-                        {/* Description preview */}
-                        <p className="prof-bio-preview">
-                          {prof.professions?.[0]?.description || 
-                           `Especialista en servicios de ${prof.professions?.[0]?.name || 'rubros generales'}. Consultá por presupuestos sin cargo.`}
-                        </p>
-                      </div>
-
-                      {/* Footer action button */}
-                      <div className="prof-card-footer">
-                        <Button 
-                          variant={prof.userType === 'VIP' ? 'primary' : 'secondary'} 
-                          fullWidth 
-                          onClick={() => handleOpenProfile(prof)}
-                        >
-                          Ver Perfil
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
+      {searchQuery.trim() !== '' && (
+        <section className="results-grid-section" style={{ position: 'relative', minHeight: '200px' }}>
+          {loading ? (
+            <Loading message="Cargando profesionales disponibles..." />
+          ) : (
+            <>
+              {isSearching && (
+                <div className="search-inline-loader" style={{
+                  position: 'absolute',
+                  top: '-25px',
+                  right: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '0.85rem',
+                  color: 'var(--text-muted)',
+                  backgroundColor: 'rgba(30, 41, 59, 0.7)',
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  backdropFilter: 'blur(4px)',
+                  border: '1px solid var(--border-color)',
+                  zIndex: 10
+                }}>
+                  <span className="search-mini-spinner" style={{
+                    display: 'inline-block',
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255, 255, 255, 0.2)',
+                    borderTopColor: 'var(--text-primary)',
+                    animation: 'spin 0.8s linear infinite'
+                  }}></span>
+                  <span>Buscando...</span>
                 </div>
               )}
-            </div>
-          </>
-        )}
-      </section>
+
+              <div style={{
+                opacity: isSearching ? 0.6 : 1,
+                transition: 'opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                pointerEvents: isSearching ? 'none' : 'auto'
+              }}>
+                {professionals.length === 0 ? (
+                  <div className="no-results-card">
+                    <div className="no-results-icon">🔍</div>
+                    <h3>No se encontraron profesionales para tu búsqueda.</h3>
+                    <p>Intentá modificando los filtros o buscando palabras clave más directas.</p>
+                  </div>
+                ) : (
+                  <div className="professionals-cards-grid">
+                    {professionals.map((prof) => (
+                      <Card key={prof.id} className={`professional-result-card ${prof.userType === 'VIP' ? 'vip-starred' : ''}`}>
+                        
+                        {/* Header elements */}
+                        <div className="prof-card-top">
+                          <div className="avatar-section">
+                            <div className={`prof-large-avatar ${prof.userType === 'VIP' ? 'vip-avatar-border' : ''}`}>
+                              {prof.name[0].toUpperCase()}
+                            </div>
+                            {prof.userType === 'VIP' && (
+                              <span className="badge-vip-shield">👑 VIP</span>
+                            )}
+                          </div>
+                          <div className="prof-name-info">
+                            <h3 className="prof-card-name">{prof.name}</h3>
+                            <div className="prof-residence-row">
+                              <span className="residence-pin">📍</span>
+                              <span className="residence-text">
+                                {prof.locality || prof.city ? `${prof.locality || ''}, ${prof.city || ''}` : 'Residencia no especificada'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Body elements */}
+                        <div className="prof-card-body">
+                          {/* Professions list */}
+                          <div className="professions-tags-wrapper">
+                            {prof.professions && prof.professions.length > 0 ? (
+                              prof.professions.map((p) => (
+                                <span key={p.id} className="profession-tag">🏅 {p.name}</span>
+                              ))
+                            ) : (
+                              <span className="profession-tag tag-empty">Servicios independientes</span>
+                            )}
+                          </div>
+
+                          {/* Description preview */}
+                          <p className="prof-bio-preview">
+                            {prof.professions?.[0]?.description || 
+                             `Especialista en servicios de ${prof.professions?.[0]?.name || 'rubros generales'}. Consultá por presupuestos sin cargo.`}
+                          </p>
+                        </div>
+
+                        {/* Footer action button */}
+                        <div className="prof-card-footer">
+                          <Button 
+                            variant={prof.userType === 'VIP' ? 'primary' : 'secondary'} 
+                            fullWidth 
+                            onClick={() => handleOpenProfile(prof)}
+                          >
+                            Ver Perfil
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       {/* Modal detail */}
       <Modal
