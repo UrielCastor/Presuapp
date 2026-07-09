@@ -123,7 +123,7 @@ export default function Budgets() {
     }
     const currentItemsCount = budgets.reduce((acc, b) => acc + (b.items?.length || 0), 0);
     if (user?.userType === 'FREE' && currentItemsCount + selectedItems.length > 100) {
-      setFormError('Has alcanzado el límite de tu plan FREE (Máximo 100 ítems permitidos). Actualizá a VIP para seguir creando elementos.');
+      setFormError('Has alcanzado el límite de tu plan FREE (Máximo 100 ítems permitidos). Actualizá a Premium para seguir creando elementos.');
       return;
     }
     setSubmitting(true);
@@ -212,7 +212,7 @@ export default function Budgets() {
           return (
             <div className="alert alert-warning" role="alert" style={{ marginBottom: '20px' }}>
               <span className="alert-icon">💡</span>
-              Has alcanzado el límite de tu plan FREE (Máximo 100 items en presupuestos). Actualizá a VIP para seguir creando elementos.
+              Has alcanzado el límite de tu plan FREE (Máximo 100 items en presupuestos). Actualizá a Premium para seguir creando elementos.
             </div>
           );
         }

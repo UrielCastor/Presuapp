@@ -174,7 +174,7 @@ export default function Index() {
                               {prof.name[0].toUpperCase()}
                             </div>
                             {prof.userType === 'VIP' && (
-                              <span className="badge-vip-shield">👑 VIP</span>
+                              <span className="badge-vip-shield">👑 Premium</span>
                             )}
                           </div>
                           <div className="prof-name-info">
@@ -244,7 +244,7 @@ export default function Index() {
               <div className="modal-header-text">
                 <h2>{selectedProfessional.name}</h2>
                 {selectedProfessional.userType === 'VIP' && (
-                  <span className="modal-vip-badge">Membresía VIP ⭐</span>
+                  <span className="modal-vip-badge">Membresía Premium ⭐</span>
                 )}
               </div>
             </div>

@@ -128,7 +128,7 @@ export default function Clients() {
     
     // Validar límite para plan FREE en creación nueva
     if (!editingClient && user?.userType === 'FREE' && clients.length >= 50) {
-      setFormError('Has alcanzado el límite de tu plan FREE. Actualizá a VIP para seguir creando elementos.');
+      setFormError('Has alcanzado el límite de tu plan FREE. Actualizá a Premium para seguir creando elementos.');
       return;
     }
 
@@ -199,7 +199,7 @@ export default function Clients() {
       {user?.userType === 'FREE' && clients.length >= 50 && (
         <div className="alert alert-warning" role="alert" style={{ marginBottom: '20px' }}>
           <span className="alert-icon">💡</span>
-          Has alcanzado el límite de tu plan FREE (Máximo 50 clientes). Actualizá a VIP para seguir creando elementos.
+          Has alcanzado el límite de tu plan FREE (Máximo 50 clientes). Actualizá a Premium para seguir creando elementos.
         </div>
       )}
 

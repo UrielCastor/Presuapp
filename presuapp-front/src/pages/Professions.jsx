@@ -53,7 +53,7 @@ export default function Professions() {
       return;
     }
     if (user?.userType === 'FREE' && professions.length >= 1) {
-      setFormError('Has alcanzado el límite de tu plan FREE. Actualizá a VIP para seguir creando elementos.');
+      setFormError('Has alcanzado el límite de tu plan FREE. Actualizá a Premium para seguir creando elementos.');
       return;
     }
     setSubmitting(true);
@@ -164,7 +164,7 @@ export default function Professions() {
       {user?.userType === 'FREE' && professions.length >= 1 && (
         <div className="alert alert-warning" role="alert" style={{ marginBottom: '20px' }}>
           <span className="alert-icon">💡</span>
-          Has alcanzado el límite de tu plan FREE (Máximo 1 profesión). Actualizá a VIP para seguir creando elementos.
+          Has alcanzado el límite de tu plan FREE (Máximo 1 profesión). Actualizá a Premium para seguir creando elementos.
         </div>
       )}
 

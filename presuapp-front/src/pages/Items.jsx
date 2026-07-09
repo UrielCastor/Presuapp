@@ -162,7 +162,7 @@ export default function Items() {
     }
 
     if (!editingItem && user?.userType === 'FREE' && items.length >= 20) {
-      setFormError('Has alcanzado el límite de tu plan FREE (Máximo 20 servicios). Actualizá a VIP para seguir creando elementos.');
+      setFormError('Has alcanzado el límite de tu plan FREE (Máximo 20 servicios). Actualizá a Premium para seguir creando elementos.');
       return;
     }
 
@@ -252,7 +252,7 @@ export default function Items() {
       {user?.userType === 'FREE' && items.length >= 20 && (
         <div className="alert alert-warning" role="alert" style={{ marginBottom: '20px' }}>
           <span className="alert-icon">💡</span>
-          Has alcanzado el límite de tu plan FREE (Máximo 20 servicios). Actualizá a VIP para seguir creando elementos.
+          Has alcanzado el límite de tu plan FREE (Máximo 20 servicios). Actualizá a Premium para seguir creando elementos.
         </div>
       )}
 

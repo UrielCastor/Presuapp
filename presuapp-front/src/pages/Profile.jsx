@@ -70,7 +70,7 @@ export default function Profile() {
         <div className="alert alert-success" style={{ marginBottom: '24px', borderRadius: '12px' }}>
           <span className="alert-icon">🎉</span>
           <div>
-            <strong>¡Suscripción VIP Activada!</strong> Ahora tenés acceso ilimitado a clientes, presupuestos y catálogos.
+            <strong>¡Suscripción Premium Activada!</strong> Ahora tenés acceso ilimitado a clientes, presupuestos y catálogos.
           </div>
         </div>
       )}
@@ -141,7 +141,7 @@ export default function Profile() {
             border: `1px solid ${user?.userType === 'VIP' ? 'rgba(245, 158, 11, 0.2)' : 'var(--border-color)'}`
           }}
         >
-          {user?.userType === 'VIP' ? '🏆 CLIENTE VIP' : 'PLAN FREE'}
+          {user?.userType === 'VIP' ? '🏆 CLIENTE PREMIUM' : 'PLAN FREE'}
         </div>
       </div>
 
@@ -248,7 +248,7 @@ export default function Profile() {
             >
               <div style={{ textAlign: 'left' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', display: 'block', marginBottom: '2px' }}>
-                  ⭐ Actualizate a {profilePlan ? `${profilePlan.name}` : 'Platinum VIP'}
+                  ⭐ Actualizate a {profilePlan ? `${profilePlan.name}` : 'Platinum Premium'}
                 </span>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.4', display: 'block' }}>
                   Eliminá límites de clientes, presupuestos y catálogos de rubros por {profilePlan ? `$${profilePlan.price.toLocaleString('es-AR')} ${profilePlan.currency}` : '$10.000 ARS'} / mes.
@@ -257,7 +257,7 @@ export default function Profile() {
               
               {profilePlan && !profilePlan.active ? (
                 <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#f87171', fontSize: '0.8rem', textAlign: 'center', fontWeight: 'bold' }}>
-                  El plan VIP no está disponible actualmente.
+                  El plan Premium no está disponible actualmente.
                 </div>
               ) : (
                 <>
@@ -267,7 +267,7 @@ export default function Profile() {
                     variant="primary" 
                     style={{ width: '100%', padding: '10px', fontSize: '0.82rem', fontWeight: 700 }}
                   >
-                    {loadingPay ? 'Iniciando...' : `Obtener VIP — ${profilePlan ? `$${profilePlan.price.toLocaleString('es-AR')}` : '$10.000'} / mes`}
+                    {loadingPay ? 'Iniciando...' : `Obtener Premium — ${profilePlan ? `$${profilePlan.price.toLocaleString('es-AR')}` : '$10.000'} / mes`}
                   </Button>
                 </>
               )}
@@ -288,7 +288,7 @@ export default function Profile() {
               }}
             >
               <span>✨</span>
-              <span>¡Felicidades! Tenés acceso total e ilimitado a PresuApp por ser cliente Platinum VIP.</span>
+              <span>¡Felicidades! Tenés acceso total e ilimitado a PresuApp por ser cliente Platinum Premium.</span>
             </div>
           )}
         </Card>

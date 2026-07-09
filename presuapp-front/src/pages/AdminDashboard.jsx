@@ -93,7 +93,7 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error(err);
-      setPlanError('Error al cargar la configuración del plan VIP.');
+      setPlanError('Error al cargar la configuración del plan Premium.');
     } finally {
       setPlanLoading(false);
     }
@@ -450,11 +450,12 @@ export default function AdminDashboard() {
             padding: '12px 20px',
             cursor: 'pointer',
             fontSize: '1rem',
+            fontSize: '1rem',
             borderBottom: activeTab === 'config' ? '3px solid var(--brand-primary)' : '3px solid transparent',
             transition: 'all var(--transition)'
           }}
         >
-          ⚙️ Configuración VIP
+          ⚙️ Configuración Premium
         </button>
       </div>
 
@@ -484,7 +485,7 @@ export default function AdminDashboard() {
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     <span>Activos: <b style={{ color: 'var(--brand-success)' }}>{stats.users.active}</b></span>
                     <span>•</span>
-                    <span>VIPs: <b style={{ color: 'var(--brand-warning)' }}>{stats.users.vip}</b></span>
+                    <span>Premium: <b style={{ color: 'var(--brand-warning)' }}>{stats.users.vip}</b></span>
                     <span>•</span>
                     <span>Gratis: <b>{stats.users.free}</b></span>
                   </div>
@@ -493,16 +494,16 @@ export default function AdminDashboard() {
                   </div>
                 </Card>
 
-                {/* CARD 2: FUSIÓN DE CONFIGURACIÓN Y MÉTRICAS VIP */}
+                {/* CARD 2: FUSIÓN DE CONFIGURACIÓN Y MÉTRICAS PREMIUM */}
                 <Card style={{ borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Membresías VIP</h3>
+                      <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Membresías Premium</h3>
                       <span style={{ fontSize: '1.25rem' }}>💎</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '12px 0' }}>
                       <strong style={{ fontSize: '1.5rem', color: '#fff', margin: 0 }}>
-                        {membershipPlan ? membershipPlan.name : 'VIP'}
+                        {membershipPlan ? membershipPlan.name : 'Premium'}
                       </strong>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                         Activas: <b style={{ color: 'var(--brand-warning)', fontSize: '0.95rem' }}>{stats.memberships.active}</b>
@@ -727,7 +728,7 @@ export default function AdminDashboard() {
                 >
                   <option value="">Todos los planes</option>
                   <option value="FREE">Gratuito (FREE)</option>
-                  <option value="VIP">VIP Platinum</option>
+                  <option value="VIP">Premium Platinum</option>
                 </select>
               </div>
 
@@ -787,7 +788,7 @@ export default function AdminDashboard() {
                         <td style={{ padding: '8px 12px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{u.email}</td>
                         <td style={{ padding: '8px 12px' }}>
                           <span className={`badge ${u.userType === 'VIP' ? 'badge-warning' : 'badge-default'}`} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
-                            {u.userType}
+                            {u.userType === 'VIP' ? 'Premium' : u.userType}
                           </span>
                         </td>
                         <td style={{ padding: '8px 12px' }}>
@@ -912,8 +913,8 @@ export default function AdminDashboard() {
                   style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', width: '100%', padding: '10px', borderRadius: '6px', color: '#fff', outline: 'none' }}
                 >
                   <option value="">Todos los estados</option>
-                  <option value="ACTIVE">VIP activos 🟢</option>
-                  <option value="EXPIRED">VIP vencidos 🔴</option>
+                  <option value="ACTIVE">Premium activos 🟢</option>
+                  <option value="EXPIRED">Premium vencidos 🔴</option>
                   <option value="FREE">Plan FREE 🟡</option>
                   <option value="EXPIRING">Próximos vencimientos (7 días)</option>
                 </select>
@@ -962,7 +963,7 @@ export default function AdminDashboard() {
                         <td style={{ padding: '8px 12px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{m.userEmail}</td>
                         <td style={{ padding: '8px 12px' }}>
                           <span className={`badge ${m.planType === 'VIP' ? 'badge-warning' : 'badge-default'}`} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
-                            {m.planType}
+                            {m.planType === 'VIP' ? 'Premium' : m.planType}
                           </span>
                         </td>
                         <td style={{ padding: '8px 12px' }}>
@@ -1007,7 +1008,7 @@ export default function AdminDashboard() {
                                 onClick={() => triggerMemAction('activate', m.userId, m.userName)}
                                 style={{ padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '5px', border: '1px solid rgba(16, 185, 129, 0.2)', background: 'transparent', color: '#34d399', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}
                               >
-                                ↑ Activar VIP
+                                ↑ Activar Premium
                               </button>
                             )}
                           </div>
@@ -1066,7 +1067,7 @@ export default function AdminDashboard() {
                 <Card style={{ borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
                     <h3 style={{ fontSize: '1.05rem', fontWeight: '750', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      💳 Configuración del Plan VIP
+                      💳 Configuración del Plan Premium
                     </h3>
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem', marginBottom: '24px' }}>
@@ -1116,7 +1117,7 @@ export default function AdminDashboard() {
                 {isEditingPlan && (
                   <Card style={{ border: '1px solid var(--border-color)' }}>
                     <h3 style={{ fontSize: '1.05rem', fontWeight: '750', marginBottom: '20px' }}>
-                      ✏️ Modificar Parámetros VIP
+                      ✏️ Modificar Parámetros Premium
                     </h3>
                     <form onSubmit={handleSavePlanConfig} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div>
@@ -1163,7 +1164,7 @@ export default function AdminDashboard() {
                           style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                         />
                         <label htmlFor="active" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                          Plan VIP Activo
+                          Plan Premium Activo
                         </label>
                       </div>
 
@@ -1362,18 +1363,18 @@ export default function AdminDashboard() {
             <div className="modal-body" style={{ color: 'var(--text-primary)' }}>
               {confirmMemAction.type === 'activate' ? (
                 <p>
-                  ¿Estás seguro de que querés <strong>ACTIVAR</strong> manualmente el acceso VIP para <strong>{confirmMemAction.userName}</strong>?<br/>
-                  Esto le otorgará 30 días de membresía VIP con almacenamiento ilimitado a partir de hoy.
+                  ¿Estás seguro de que querés <strong>ACTIVAR</strong> manualmente el acceso Premium para <strong>{confirmMemAction.userName}</strong>?<br/>
+                  Esto le otorgará 30 días de membresía Premium con almacenamiento ilimitado a partir de hoy.
                 </p>
               ) : confirmMemAction.type === 'deactivate' ? (
                 <p>
-                  ¿Estás seguro de que querés <strong>DESACTIVAR</strong> el plan VIP para <strong>{confirmMemAction.userName}</strong>?<br/>
+                  ¿Estás seguro de que querés <strong>DESACTIVAR</strong> el plan Premium para <strong>{confirmMemAction.userName}</strong>?<br/>
                   Su cuenta revertirá inmediatamente a plan FREE y se aplicarán los límites del sistema.
                 </p>
               ) : confirmMemAction.type === 'extend' ? (
                 <div>
                   <p>
-                    ¿Estás seguro de que querés <strong>EXTENDER</strong> la membresía VIP de <strong>{confirmMemAction.userName}</strong>?
+                    ¿Estás seguro de que querés <strong>EXTENDER</strong> la membresía Premium de <strong>{confirmMemAction.userName}</strong>?
                   </p>
                   <div style={{ marginTop: '12px' }}>
                     <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>Elegir días a extender:</label>
@@ -1468,7 +1469,7 @@ export default function AdminDashboard() {
                   <div>
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Membresía actual (Rol):</span>
                     <strong style={{ display: 'block', fontSize: '1rem', color: selectedUser.userType === 'VIP' ? '#f59e0b' : 'var(--text-primary)' }}>
-                      {selectedUser.userType === 'VIP' ? 'Platinum VIP ⭐' : 'Plan Básico (FREE)'}
+                      {selectedUser.userType === 'VIP' ? 'Platinum Premium ⭐' : 'Plan Básico (FREE)'}
                       <span style={{ fontSize: '0.8rem', color: 'var(--brand-primary-light)', marginLeft: '6px' }}>({selectedUser.role})</span>
                     </strong>
                   </div>
@@ -1544,7 +1545,7 @@ export default function AdminDashboard() {
                   ¿Estás seguro de que querés cambiar el plan de <strong>{actionUser.name}</strong> a <strong>{confirmAction.value}</strong>?
                   {confirmAction.value === 'VIP' ? (
                     <span style={{ display: 'block', marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      Esto habilitará el plan VIP por <b>30 días</b> de almacenamiento sin restricciones técnicas.
+                      Esto habilitará el plan Premium por <b>30 días</b> de almacenamiento sin restricciones técnicas.
                     </span>
                   ) : (
                     <span style={{ display: 'block', marginTop: '10px', fontSize: '0.85rem', color: 'var(--brand-danger-light)' }}>
