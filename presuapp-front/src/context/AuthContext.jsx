@@ -1,10 +1,17 @@
-import { createContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import axiosInstance from '../api/axios';
 
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const userRef = useRef(null);
+
+  // Sync ref with current user state to avoid dependencies issues
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState('dark');
@@ -93,8 +100,9 @@ export function AuthProvider({ children }) {
       let currentRole = 'USER';
       let currentStatus = 'ACTIVE';
 
-      if (user && user.role) {
-        currentRole = user.role;
+      const currentUser = userRef.current;
+      if (currentUser && currentUser.role) {
+        currentRole = currentUser.role;
       } else {
         const stored = localStorage.getItem('user');
         if (stored) {
@@ -106,8 +114,8 @@ export function AuthProvider({ children }) {
         }
       }
 
-      if (user && user.status) {
-        currentStatus = user.status;
+      if (currentUser && currentUser.status) {
+        currentStatus = currentUser.status;
       }
 
       const mergedUser = {
@@ -122,7 +130,7 @@ export function AuthProvider({ children }) {
     } catch (e) {
       console.error('Error refreshing profile:', e);
     }
-  }, [token, user]);
+  }, [token]);
 
   const value = {
     user,

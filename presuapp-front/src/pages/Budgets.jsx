@@ -171,8 +171,6 @@ export default function Budgets() {
     b.client?.name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loadingData) return <Loading message="Cargando presupuestos..." />;
-
   // Filter available items for creation select dropdown based on professions
   const availableItems = items.filter((i) => {
     if (selectedItems.find((si) => si.serviceItemId === i.id)) return false;
@@ -192,9 +190,9 @@ export default function Budgets() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Presupuestos</h1>
-          <p className="page-subtitle">{budgets.length} presupuestos en total</p>
+          <p className="page-subtitle">{loadingData ? 'Cargando...' : `${budgets.length} presupuestos en total`}</p>
         </div>
-        <Button variant="primary" onClick={handleOpenModal}>
+        <Button variant="primary" onClick={handleOpenModal} disabled={loadingData}>
           + Nuevo Presupuesto
         </Button>
       </div>
@@ -218,6 +216,13 @@ export default function Budgets() {
         }
         return null;
       })()}
+
+      {loadingData ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0', width: '100%' }}>
+          <Loading message="Cargando presupuestos..." />
+        </div>
+      ) : (
+        <>
 
       {/* Modern Search Bar */}
       {budgets.length > 0 && (
@@ -326,6 +331,8 @@ export default function Budgets() {
           ))
         )}
       </div>
+        </>
+      )}
 
       {/* Create Modal */}
       <Modal

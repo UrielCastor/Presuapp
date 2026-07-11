@@ -132,17 +132,15 @@ export default function Professions() {
     </form>
   );
 
-  if (loadingData) return <Loading message="Cargando profesiones..." />;
-
   return (
     <div className="page-container">
       <div className="page-header">
         <div>
           <h1 className="page-title">Profesiones</h1>
-          <p className="page-subtitle">{professions.length} profesiones creadas</p>
+          <p className="page-subtitle">{loadingData ? 'Cargando...' : `${professions.length} profesiones creadas`}</p>
         </div>
         {/* Botón "+ Agregar Profesión" - Visible solo en Mobile */}
-        <Button variant="primary" className="show-mobile" onClick={handleOpenModal}>
+        <Button variant="primary" className="show-mobile" onClick={handleOpenModal} disabled={loadingData}>
           + Agregar Profesión
         </Button>
       </div>
@@ -177,7 +175,11 @@ export default function Professions() {
 
         {/* Sección de Listado */}
         <div className="profession-list-section">
-          {professions.length === 0 ? (
+          {loadingData ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0', width: '100%' }}>
+              <Loading message="Cargando profesiones..." />
+            </div>
+          ) : professions.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">🏅</div>
               <p className="empty-text">No hay profesiones configuradas</p>

@@ -51,8 +51,6 @@ export default function Dashboard() {
     return 'Buenas noches';
   };
 
-  if (loadingData) return <Loading message="Cargando panel de control..." />;
-
   // Calcs
   const totalPresupuestos = budgets.length;
   const totalClientes = clients.length;
@@ -82,7 +80,7 @@ export default function Dashboard() {
             Panel de control analítico y resumen general de tu actividad
           </p>
         </div>
-        <Button variant="primary" onClick={() => navigate('/budgets')}>
+        <Button variant="primary" onClick={() => navigate('/budgets')} disabled={loadingData}>
           + Nuevo Presupuesto
         </Button>
       </div>
@@ -94,17 +92,23 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 2. PREMIUM KEY METRICS INTERACTIVE CARDS */}
-      <div 
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '20px',
-          marginBottom: '32px'
-        }}
-      >
-        {/* Card 1: Presupuestos */}
-        <div
+      {loadingData ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0', width: '100%' }}>
+          <Loading message="Cargando panel de control..." />
+        </div>
+      ) : (
+        <>
+          {/* 2. PREMIUM KEY METRICS INTERACTIVE CARDS */}
+          <div 
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '20px',
+              marginBottom: '32px'
+            }}
+          >
+            {/* Card 1: Presupuestos */}
+            <div
           onClick={() => navigate('/budgets')}
           onMouseEnter={() => setHoveredCard('budgets')}
           onMouseLeave={() => setHoveredCard(null)}
@@ -288,6 +292,8 @@ export default function Dashboard() {
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '6px', display: 'block' }}>Importe más alto facturado o enviado</span>
         </Card>
       </div>
+        </>
+      )}
     </div>
   );
 }

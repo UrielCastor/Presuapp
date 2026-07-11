@@ -36,16 +36,14 @@ export default function Items() {
 
   const fetchAll = async () => {
     try {
-      const [itemsRes, professionsRes, budgetsRes] = await Promise.all([
+      const [itemsRes, professionsRes] = await Promise.all([
         axiosInstance.get('/items'),
         axiosInstance.get('/professions'),
-        axiosInstance.get('/budgets'),
       ]);
       const fetchedItems = itemsRes.data.data || [];
       const fetchedProfessions = professionsRes.data.data || [];
       setItems(fetchedItems);
       setProfessions(fetchedProfessions);
-      setBudgets(budgetsRes.data.data || []);
 
       // If user has 2 or more professions and none is selected yet, select the first one by default
       if (fetchedProfessions.length >= 2 && !selectedProfessionId) {
@@ -98,19 +96,34 @@ export default function Items() {
     setModalOpen(true);
   };
 
-  const handleDeleteClick = (item) => {
+  const handleDeleteClick = async (item) => {
     setSuccessMessage('');
     setDeleteWarning('');
-    const isUsed = budgets.some(b => 
-      b.items && b.items.some(bi => bi.description?.trim().toLowerCase() === item.name?.trim().toLowerCase())
-    );
-    
-    if (isUsed) {
-      setDeleteWarning(`El servicio "${item.name}" coincide textualmente con conceptos utilizados en tus presupuestos existentes. Si lo eliminás, no se verá afectada tu facturación histórica ni tus presupuestos redactados.`);
-    }
-
     setItemToDelete(item);
     setDeleteConfirmOpen(true);
+
+    if (budgets.length === 0) {
+      try {
+        const res = await axiosInstance.get('/budgets');
+        const fetchedBudgets = res.data.data || [];
+        setBudgets(fetchedBudgets);
+        const isUsed = fetchedBudgets.some(b => 
+          b.items && b.items.some(bi => bi.description?.trim().toLowerCase() === item.name?.trim().toLowerCase())
+        );
+        if (isUsed) {
+          setDeleteWarning(`El servicio "${item.name}" coincide textualmente con conceptos utilizados en tus presupuestos existentes. Si lo eliminás, no se verá afectada tu facturación histórica ni tus presupuestos redactados.`);
+        }
+      } catch {
+        // ignore warning fetch failures so they don't block actual deletion flow
+      }
+    } else {
+      const isUsed = budgets.some(b => 
+        b.items && b.items.some(bi => bi.description?.trim().toLowerCase() === item.name?.trim().toLowerCase())
+      );
+      if (isUsed) {
+        setDeleteWarning(`El servicio "${item.name}" coincide textualmente con conceptos utilizados en tus presupuestos existentes. Si lo eliminás, no se verá afectada tu facturación histórica ni tus presupuestos redactados.`);
+      }
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -216,8 +229,6 @@ export default function Items() {
       item.description?.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loadingData) return <Loading message="Cargando servicios..." />;
-
   return (
     <div className="page-container">
       {/* HEADER */}
@@ -225,12 +236,12 @@ export default function Items() {
         <div>
           <h1 className="page-title">Servicios</h1>
           <p className="page-subtitle">
-            {hasMultipleProfessions 
+            {loadingData ? 'Cargando...' : (hasMultipleProfessions 
               ? `${filtered.length} servicios de la profesión seleccionada` 
-              : `${items.length} servicios disponibles`}
+              : `${items.length} servicios disponibles`)}
           </p>
         </div>
-        <Button variant="primary" onClick={handleOpenModal}>
+        <Button variant="primary" onClick={handleOpenModal} disabled={loadingData}>
           + Agregar Servicio
         </Button>
       </div>
@@ -256,7 +267,13 @@ export default function Items() {
         </div>
       )}
 
-      {/* PROFESSION FILTER (Visible if >= 2 professions) */}
+      {loadingData ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0', width: '100%' }}>
+          <Loading message="Cargando servicios..." />
+        </div>
+      ) : (
+        <>
+          {/* PROFESSION FILTER (Visible if >= 2 professions) */}
       {hasMultipleProfessions && (
         <div 
           style={{ 
@@ -469,6 +486,8 @@ export default function Items() {
           ))
         )}
       </div>
+        </>
+      )}
 
       {/* Item Modal */}
       <Modal

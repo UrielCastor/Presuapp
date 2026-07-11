@@ -23,6 +23,13 @@ class PrismaClientRepository extends ClientRepository {
     } catch { return null; }
   }
   async delete(id) {
+    const budgetsCount = await prisma.budget.count({
+      where: { clientId: parseInt(id) }
+    });
+    if (budgetsCount > 0) {
+      throw new Error(`No es posible eliminar al cliente porque posee presupuestos asociados. Para mantener la consistencia histórica de la base de datos, debés eliminar primero todos sus presupuestos asociados.`);
+    }
+
     try { await prisma.client.delete({ where: { id: parseInt(id) } }); } catch {}
   }
 }

@@ -17,7 +17,6 @@ const emptyForm = {
 export default function Clients() {
   const { user } = useAuth();
   const [clients, setClients] = useState([]);
-  const [budgets, setBudgets] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -33,12 +32,8 @@ export default function Clients() {
 
   const fetchClients = async () => {
     try {
-      const [clientsRes, budgetsRes] = await Promise.all([
-        axiosInstance.get('/clients'),
-        axiosInstance.get('/budgets'),
-      ]);
+      const clientsRes = await axiosInstance.get('/clients');
       setClients(clientsRes.data.data || []);
-      setBudgets(budgetsRes.data.data || []);
     } catch {
       setError('Error al cargar clientes.');
     } finally {
@@ -78,20 +73,15 @@ export default function Clients() {
   const handleDeleteClick = (client) => {
     setSuccessMessage('');
     setDeleteWarning('');
-    // Filtrar si el cliente posee presupuestos
-    const associated = budgets.filter((b) => b.clientId === client.id);
-    if (associated.length > 0) {
-      setDeleteWarning(`No es posible eliminar al cliente "${client.name}" porque posee ${associated.length} presupuesto(s) asociado(s) (Ej: Presupuesto #${associated[0].id}). Para mantener la consistencia histórica de la base de datos, debés eliminar primero todos sus presupuestos asociados.`);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      setClientToDelete(client);
-      setDeleteConfirmOpen(true);
-    }
+    setClientToDelete(client);
+    setDeleteConfirmOpen(true);
   };
 
   const handleConfirmDelete = async () => {
     if (!clientToDelete) return;
     setSubmitting(true);
+    setDeleteWarning('');
+    setError('');
     try {
       await axiosInstance.delete(`/clients/${clientToDelete.id}`);
       setSuccessMessage(`Cliente "${clientToDelete.name}" eliminado con éxito.`);
@@ -99,7 +89,13 @@ export default function Clients() {
       setClientToDelete(null);
       fetchClients();
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al eliminar el cliente.');
+      const errMsg = err.response?.data?.message || 'Error al eliminar el cliente.';
+      if (errMsg.includes('presupuestos asociados')) {
+        setDeleteWarning(errMsg);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        setError(errMsg);
+      }
       setDeleteConfirmOpen(false);
       setClientToDelete(null);
     } finally {
@@ -159,16 +155,14 @@ export default function Clients() {
       c.phone?.includes(search)
   );
 
-  if (loadingData) return <Loading message="Cargando clientes..." />;
-
   return (
     <div className="page-container">
       <div className="page-header">
         <div>
           <h1 className="page-title">Clientes</h1>
-          <p className="page-subtitle">{clients.length} clientes registrados</p>
+          <p className="page-subtitle">{loadingData ? 'Cargando...' : `${clients.length} clientes registrados`}</p>
         </div>
-        <Button variant="primary" onClick={handleOpenModal}>
+        <Button variant="primary" onClick={handleOpenModal} disabled={loadingData}>
           + Agregar Cliente
         </Button>
       </div>
@@ -212,11 +206,18 @@ export default function Clients() {
           placeholder="Buscar por nombre, email o teléfono..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          disabled={loadingData}
         />
       </div>
 
-      {/* Desktop table */}
-      <div className="table-wrapper hide-mobile">
+      {loadingData ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0', width: '100%' }}>
+          <Loading message="Cargando clientes..." />
+        </div>
+      ) : (
+        <>
+          {/* Desktop table */}
+          <div className="table-wrapper hide-mobile">
         {filtered.length === 0 ? (
           <EmptyState onAdd={handleOpenModal} />
         ) : (
@@ -332,6 +333,8 @@ export default function Clients() {
           ))
         )}
       </div>
+        </>
+      )}
 
       {/* Form Modal */}
       <Modal

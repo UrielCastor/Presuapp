@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../../infrastructure/database/prisma');
 
 class AdminUseCases {
   async getDashboardStats() {
@@ -11,50 +10,108 @@ class AdminUseCases {
     // Rango Inicio del Mes
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // 1. Estadísticas de Usuarios
-    const totalUsers = await prisma.user.count();
-    const activeUsers = await prisma.user.count({ where: { status: 'ACTIVE' } });
-    const freeUsers = await prisma.user.count({ where: { userType: 'FREE' } });
-    const vipUsers = await prisma.user.count({ where: { userType: 'VIP' } });
-    const usersThisMonth = await prisma.user.count({ where: { createdAt: { gte: startOfMonth } } });
-    const usersToday = await prisma.user.count({ where: { createdAt: { gte: startOfToday } } });
-
-    // 2. Estadísticas de Membresías
-    // 2. Estadísticas de Membresías
-    const activeMemberships = await prisma.membership.count({
-      where: { status: 'ACTIVE', endDate: { gte: now } }
-    });
-    const expiredMemberships = await prisma.membership.count({
-      where: {
-        OR: [
-          { status: 'INACTIVE' },
-          { endDate: { lt: now } }
-        ]
-      }
-    });
-
-    const nextVencimientos = await prisma.membership.count({
-      where: {
-        status: 'ACTIVE',
-        endDate: {
-          gte: now,
-          lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) // Próximos 7 días
+    // 1. Ejecutar las consultas de base de datos en paralelo
+    const [
+      totalUsers,
+      activeUsers,
+      freeUsers,
+      vipUsers,
+      usersThisMonth,
+      usersToday,
+      activeMemberships,
+      expiredMemberships,
+      nextVencimientos,
+      renewals,
+      cancellations,
+      approvedTransactions,
+      pendingTransactions,
+      rejectedTransactions,
+      totalProfessions,
+      totalServices,
+      totalClients,
+      totalBudgets,
+      professionsGroup,
+      citiesGroup
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { status: 'ACTIVE' } }),
+      prisma.user.count({ where: { userType: 'FREE' } }),
+      prisma.user.count({ where: { userType: 'VIP' } }),
+      prisma.user.count({ where: { createdAt: { gte: startOfMonth } } }),
+      prisma.user.count({ where: { createdAt: { gte: startOfToday } } }),
+      prisma.membership.count({
+        where: { status: 'ACTIVE', endDate: { gte: now } }
+      }),
+      prisma.membership.count({
+        where: {
+          OR: [
+            { status: 'INACTIVE' },
+            { endDate: { lt: now } }
+          ]
         }
-      }
-    });
-    const renewals = await prisma.membership.count({ where: { autoRenew: true } });
-    const cancellations = await prisma.membership.count({ where: { autoRenew: false } });
+      }),
+      prisma.membership.count({
+        where: {
+          status: 'ACTIVE',
+          endDate: {
+            gte: now,
+            lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) // Próximos 7 días
+          }
+        }
+      }),
+      prisma.membership.count({ where: { autoRenew: true } }),
+      prisma.membership.count({ where: { autoRenew: false } }),
+      prisma.paymentTransaction.findMany({
+        where: { status: 'approved' }
+      }),
+      prisma.paymentTransaction.findMany({
+        where: { status: 'pending' }
+      }),
+      prisma.paymentTransaction.findMany({
+        where: { status: { in: ['rejected', 'cancelled', 'failure'] } }
+      }),
+      prisma.profession.count(),
+      prisma.serviceItem.count(),
+      prisma.client.count(),
+      prisma.budget.count(),
+      prisma.profession.groupBy({
+        by: ['name'],
+        _count: {
+          id: true
+        },
+        orderBy: {
+          _count: {
+            id: 'desc'
+          }
+        },
+        take: 5
+      }),
+      prisma.user.groupBy({
+        by: ['city'],
+        where: {
+          city: { not: null }
+        },
+        _count: {
+          id: true
+        },
+        orderBy: {
+          _count: {
+            id: 'desc'
+          }
+        },
+        take: 5
+      })
+    ]);
 
-    // 3. Estadísticas de Pagos Reales
-    const approvedTransactions = await prisma.paymentTransaction.findMany({
-      where: { status: 'approved' }
-    });
-    const pendingTransactions = await prisma.paymentTransaction.findMany({
-      where: { status: 'pending' }
-    });
-    const rejectedTransactions = await prisma.paymentTransaction.findMany({
-      where: { status: { in: ['rejected', 'cancelled', 'failure'] } }
-    });
+    const popularProfessions = professionsGroup.map(item => ({
+      name: item.name,
+      count: item._count.id
+    }));
+
+    const popularCities = citiesGroup.map(item => ({
+      city: item.city,
+      count: item._count.id
+    }));
 
     const totalRevenue = approvedTransactions.reduce((sum, tx) => sum + tx.amount, 0);
     const approvedPaymentsCount = approvedTransactions.length;
@@ -64,54 +121,6 @@ class AdminUseCases {
     // Ingresos del mes
     const monthlyTransactions = approvedTransactions.filter(tx => new Date(tx.approvedAt || tx.createdAt) >= startOfMonth);
     const monthlyRevenue = monthlyTransactions.reduce((sum, tx) => sum + tx.amount, 0);
-
-    // 4. Estadísticas de Contenido
-    const totalProfessions = await prisma.profession.count();
-    const totalServices = await prisma.serviceItem.count();
-    const totalClients = await prisma.client.count();
-    const totalBudgets = await prisma.budget.count();
-
-    // 5. Histórico e info agrupada para Gráficos
-    // Profesiones más utilizadas
-    const professionsGroup = await prisma.profession.groupBy({
-      by: ['name'],
-      _count: {
-        id: true
-      },
-      orderBy: {
-        _count: {
-          id: 'desc'
-        }
-      },
-      take: 5
-    });
-
-    const popularProfessions = professionsGroup.map(item => ({
-      name: item.name,
-      count: item._count.id
-    }));
-
-    // Ciudades representadas
-    const citiesGroup = await prisma.user.groupBy({
-      by: ['city'],
-      where: {
-        city: { not: null }
-      },
-      _count: {
-        id: true
-      },
-      orderBy: {
-        _count: {
-          id: 'desc'
-        }
-      },
-      take: 5
-    });
-
-    const popularCities = citiesGroup.map(item => ({
-      city: item.city,
-      count: item._count.id
-    }));
 
     // Registros simulados por mes para gráficos (completado con estructuración limpia)
     const monthlyRegistrations = [

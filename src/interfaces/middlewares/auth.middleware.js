@@ -15,11 +15,18 @@ const protectRoute = async (req, res, next) => {
 
   try {
     const decoded = verifyToken(token);
-    // Verificar y actualizar de forma transparente si la membresía ha expirado
-    await userRepository.checkAndUpdateMembershipExpiration(decoded.id);
-    
-    req.user = await userRepository.findById(decoded.id);
-    if (!req.user) throw new Error('User not found');
+    const user = await userRepository.findById(decoded.id);
+    if (!user) throw new Error('User not found');
+
+    // Verificar si la membresía ha expirado
+    const membership = user.membership;
+    if (membership && membership.status === 'ACTIVE' && new Date(membership.endDate) < new Date()) {
+      await userRepository.expireMembership(decoded.id);
+      user.userType = 'FREE';
+      user.membership.status = 'INACTIVE';
+    }
+
+    req.user = user;
     next();
   } catch (error) {
     return res.status(401).json(formatResponse(false, null, 'Not authorized, token failed'));

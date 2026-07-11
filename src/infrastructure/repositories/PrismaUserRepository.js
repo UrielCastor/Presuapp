@@ -107,6 +107,19 @@ class PrismaUserRepository extends UserRepository {
     return false;
   }
 
+  async expireMembership(userId) {
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: parseInt(userId) },
+        data: { userType: 'FREE' }
+      }),
+      prisma.membership.update({
+        where: { userId: parseInt(userId) },
+        data: { status: 'INACTIVE' }
+      })
+    ]);
+  }
+
   async updateMembership(userId, membershipData, paymentTransactionData = null) {
     const { startDate, endDate, status, planType } = membershipData;
     
